@@ -1,179 +1,170 @@
-# Трамплин (Trumplin) — карьерная платформа
-## Стек
-- **Frontend:** `Next.js (React)`
-- **Backend:** `Go`
-- **Database:** `PostgreSQL`
-- **Карта:** **Yandex Maps JS** + **Yandex Geocoder HTTP** (для офлайн-адресов) + кеш в PostgreSQL
-- **Docker:** `docker-compose`
+# Трамплин - Карьерная платформа
 
-## Важно про роли (по ТЗ)
-- **Соискатель (`APPLICANT`)**
-  - отклики на возможности
-  - приватность (скрыть отклики/резюме, открыть профиль для нетворкинга)
-  - нетворкинг (контакты)
-- **Работодатель (`EMPLOYER`)**
-  - создание возможностей
-  - просмотр откликов на свои возможности и изменение статусов откликов
-- **Куратор / Админ (`CURATOR` / `ADMIN`)**
-  - верификация компаний
-  - модерация возможностей (approve/reject и статусы)
+Платформа для взаимодействия студентов, выпускников, работодателей и карьерных центров вузов в сфере IT.
 
-## Логотип
-Логотип лежит в `frontend/public/logo.png` и используется в шапке фронтенда.
+## Стек технологий
 
-## Переменные окружения
-Шаблон: `.env.example` в корне проекта.
+### Backend
+- Go 1.25+
+- Chi (HTTP router)
+- PostgreSQL 16
+- JWT Authentication
+- Argon2 password hashing
 
-Рекомендация: скопируй `.env.example` в `.env` и заполни значения.
+### Frontend
+- Next.js 16
+- React 19
+- Tailwind CSS 4
+- TypeScript
 
-### Что обязательно
-- `TRUMPLIN_DATABASE_DSN` — DSN подключения к PostgreSQL
-- `YANDEX_GEOCODER_KEY` — ключ для HTTP Geocoder (геокодирование офлайн адресов)
-- `YANDEX_JAVASCRIPT_API_KEY` — ключ для карты (JS API)
+## Запуск через Docker Compose
 
-### Что не обязательно (имеют dev-default)
-- `TRUMPLIN_JWT_SECRET` — если не задан, backend стартует с dev-заглушкой
-  - В проде/демо обязательно замени.
+```bash
+# Сборка и запуск всех сервисов
+docker-compose up --build
 
-### Админ-куратор
-Чтобы залогиниться как куратор (модерация), задайте:
-- `TRUMPLIN_ADMIN_EMAIL`
-- `TRUMPLIN_ADMIN_PASSWORD`
-
-При старте backend создаст пользователя-админа, если его еще нет.
-
-## Запуск
-
-### Вариант A: запуск через Docker (рекомендуется)
-1. Проверь, что Docker Desktop работает.
-2. В корне проекта:
-   - `docker compose up --build`
-3. Открой:
-   - Frontend: `http://localhost:3000`
-   - Backend health: `http://localhost:8080/api/health`
-
-Заметки по cookies/CORS:
-- Backend настроен на CORS origin `http://localhost:3000` (переменная `TRUMPLIN_CORS_ORIGIN`).
-- Аутентификация сделана через `httpOnly` cookie.
-
-### Вариант B: запуск вручную (локальная разработка)
-
-#### 1) PostgreSQL
-Подними PostgreSQL любым способом. Docker тоже подходит, но можно и локально.
-
-#### 2) Backend
-В терминале (PowerShell) выставь как минимум:
-- `TRUMPLIN_DATABASE_DSN`
-- `YANDEX_GEOCODER_KEY`
-- `TRUMPLIN_ADMIN_EMAIL`
-- `TRUMPLIN_ADMIN_PASSWORD`
-- `YANDEX_GEOCODER_KEY` (для геокодинга)
-
-Далее:
-```powershell
-cd backend/cmd/server
-go run main.go
+# Или в фоновом режиме
+docker-compose up -d --build
 ```
 
-Backend автоматически:
-- применяет миграции
-- создаёт админа (если заданы admin env vars)
-- добавляет демо-данные для карты (пару `APPROVED` возможностей)
+После запуска:
+- **Frontend**: http://localhost:3000
+- **Backend API**: http://localhost:8080
+- **PostgreSQL**: localhost:5432
 
-После старта проверь:
-- `http://localhost:8080/api/health`
+## Тестовые аккаунты
 
-#### 3) Frontend
-В отдельном терминале:
-```powershell
+После первого запуска автоматически создаются:
+
+### Администратор (куратор)
+- Email: `admin@example.com`
+- Пароль: `change_me_admin_password`
+
+### Демо работодатель
+- Email: `demo_employer@trumplin.local`
+- Пароль: `demo1234`
+
+## Роли пользователей
+
+1. **Соискатель (APPLICANT)** - студенты и выпускники
+2. **Работодатель (EMPLOYER)** - компании с верификацией
+3. **Куратор (CURATOR)** - модераторы платформы
+4. **Администратор (ADMIN)** - полный доступ
+
+## Функционал
+
+### Публичный доступ
+- Просмотр вакансий на карте и в ленте
+- Фильтрация по городу, навыкам, формату работы
+- Добавление в избранное (сохраняется в браузере)
+
+### Соискатель
+- Регистрация и авторизация
+- Профиль с ФИО, вузом, резюме
+- Отклик на вакансии
+- История откликов и статусы
+- Настройки приватности
+- Профессиональные контакты (нетворкинг)
+
+### Работодатель
+- Регистрация компании (требует верификацию куратором)
+- Создание вакансий, стажировок, мероприятий
+- Управление созданными возможностями
+- Просмотр и управление откликами соискателей
+
+### Куратор/Администратор
+- Модерация компаний (верификация)
+- Модерация контента (вакансии, мероприятия)
+- Управление статусами пользователей
+
+## Конфигурация
+
+### Переменные окружения (.env)
+
+```env
+# Backend
+TRUMPLIN_JWT_SECRET=your-secret-key
+TRUMPLIN_DATABASE_DSN=postgres://user:pass@host:5432/db
+TRUMPLIN_HTTP_PORT=8080
+TRUMPLIN_CORS_ORIGIN=http://localhost:3000
+TRUMPLIN_ACCESS_TOKEN_TTL_SECONDS=900
+TRUMPLIN_COOKIE_SECURE=0
+TRUMPLIN_ADMIN_EMAIL=admin@example.com
+TRUMPLIN_ADMIN_PASSWORD=your-password
+
+# Yandex Maps
+YANDEX_GEOCODER_KEY=your-geocoder-key
+YANDEX_JAVASCRIPT_API_KEY=your-js-api-key
+```
+
+## Разработка
+
+### Backend
+```bash
+cd backend
+go mod download
+go run ./cmd/server
+```
+
+### Frontend
+```bash
 cd frontend
+npm install
 npm run dev
 ```
 
-В `frontend` в `.env.local` (или переменными окружения) установи:
-- `NEXT_PUBLIC_API_BASE_URL=http://localhost:8080`
-- `NEXT_PUBLIC_YANDEX_API_KEY=...`
+## API Endpoints
 
-Открой:
-- `http://localhost:3000`
+### Аутентификация
+- `POST /api/auth/register` - Регистрация
+- `POST /api/auth/login` - Вход
+- `POST /api/auth/logout` - Выход
+- `POST /api/auth/refresh` - Обновление токена
+- `GET /api/me` - Текущий пользователь
 
-## Как пользоваться (быстрый сценарий)
+### Публичные
+- `GET /api/public/opportunities` - Список возможностей
 
-### 1) Публичная витрина (главная)
-На главной:
-- карта + лента возможностей
-- маркер на карте подсвечивает карточку **на hover**
-- по клику карточка становится “закрепленной”
-- “избранное” хранится в `localStorage` (требование ТЗ)
+### Работодатель
+- `GET /api/employer/opportunities` - Мои возможности
+- `POST /api/employer/opportunities` - Создать возможность
+- `GET /api/employer/applications` - Отклики
+- `PATCH /api/employer/applications/{id}` - Изменить статус отклика
 
-### 2) Регистрация
-Доступно:
-- `http://localhost:3000/login`
-- `http://localhost:3000/register`
+### Соискатель
+- `PATCH /api/applicant/profile` - Обновить профиль
+- `PATCH /api/applicant/privacy` - Настройки приватности
+- `GET /api/applicant/applications` - Мои отклики
+- `POST /api/applicant/applications` - Откликнуться
+- `GET /api/applicant/contacts` - Контакты
+- `POST /api/applicant/contacts` - Добавить контакт
 
-Роль при регистрации:
-- `APPLICANT` — соискатель
-- `EMPLOYER` — работодатель
+### Куратор
+- `GET /api/curator/companies/pending` - Компании на верификацию
+- `PATCH /api/curator/companies/{id}/verification` - Верификация компании
+- `GET /api/curator/opportunities/pending` - Контент на модерацию
+- `PATCH /api/curator/opportunities/{id}/status` - Модерация контента
 
-### 3) Работодатель → создание возможностей
-На `GET/POST /api/employer/opportunities` работает RBAC.
-Создание возможно только если:
-- `companies.verification_status = APPROVED`
+## Структура проекта
 
-Поэтому в MVP два пути:
-- сначала войти куратором и верифицировать компанию
-- либо использовать демо-работодателя (он уже `APPROVED` и имеет демо-вакансии)
-
-В интерфейсе (кабинет `EMPLOYER`) есть форма создания возможности (MVP: `CITY` + skills + зарплата опционально).
-
-### 4) Куратор/Админ → модерация
-В кабинете (роль `ADMIN/CURATOR`) доступны:
-- список компаний `PENDING` + кнопки `Одобрить/Отклонить`
-- список возможностей `PENDING` + кнопки `Одобрить/Отклонить`
-
-После модерации обновляй список/страницу — карточки на главной появятся.
-
-## Основные эндпоинты API (как устроено)
-### Публично
-- `GET /api/public/opportunities?city=...`
-
-### Auth
-- `POST /api/auth/register`
-- `POST /api/auth/login`
-- `POST /api/auth/logout`
-- `POST /api/auth/refresh`
-- `GET /api/me`
-
-### Employer
-- `GET /api/employer/opportunities`
-- `POST /api/employer/opportunities`
-
-### Applicant
-- `GET /api/applicant/applications`
-- `POST /api/applicant/applications`
-- `PATCH /api/applicant/privacy`
-- `GET /api/applicant/contacts`
-- `POST /api/applicant/contacts`
-
-### Curator/Admin
-- `GET /api/curator/companies/pending`
-- `PATCH /api/curator/companies/{companyId}/verification`
-- `GET /api/curator/opportunities/pending`
-- `PATCH /api/curator/opportunities/{opportunityId}/status`
-
-## Маппинг данных на карту
-- В БД координаты (`lat/lng`) сохраняются при создании возможности через геокодинг.
-- На витрине показываются только возможности со статусом `APPROVED` и известными координатами.
-- Для избранного используется другой цвет маркера (в `YandexMap`).
-
-## Примечания безопасности
-- Токены выдаются и хранятся через `httpOnly` cookie.
-- RBAC проверяется в backend (никогда не “доверяем” фронтенду).
-- Password хранится как `argon2id` hash.
-- Добавлены refresh-token rotation и таблица `refresh_tokens`.
-
-## Контакты/презентация
-По требованиям задания вы должны приложить:
-- презентацию (до 5 МБ)
-- видеоролик (до 5 минут)
-
+```
+├── backend/
+│   ├── cmd/server/        # Точка входа
+│   ├── internal/
+│   │   ├── auth/          # Аутентификация
+│   │   ├── config/        # Конфигурация
+│   │   ├── db/            # База данных
+│   │   ├── geocode/       # Геокодирование
+│   │   ├── handlers/      # HTTP обработчики
+│   │   ├── http/          # Роутер
+│   │   └── httputilx/     # Утилиты
+│   └── migrations/        # Миграции БД
+├── frontend/
+│   ├── src/
+│   │   ├── app/           # Страницы Next.js
+│   │   ├── components/    # Компоненты
+│   │   └── lib/           # Утилиты и типы
+│   └── public/            # Статические файлы
+├── docker-compose.yml
+└── README.md
+```

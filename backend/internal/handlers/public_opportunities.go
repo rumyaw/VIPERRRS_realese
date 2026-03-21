@@ -9,15 +9,16 @@ import (
 )
 
 type OpportunityMarkerDTO struct {
-	ID        string   `json:"id"`
-	Title     string   `json:"title"`
-	Company   string   `json:"company"`
-	Type      string   `json:"type"`
-	Skills    []string `json:"skills"`
-	SalaryMin int      `json:"salaryMin,omitempty"`
-	SalaryMax int      `json:"salaryMax,omitempty"`
-	Lat       float64  `json:"lat"`
-	Lng       float64  `json:"lng"`
+	ID          string   `json:"id"`
+	Title       string   `json:"title"`
+	Company     string   `json:"company"`
+	Type        string   `json:"type"`
+	Skills      []string `json:"skills"`
+	SalaryMin   int      `json:"salaryMin,omitempty"`
+	SalaryMax   int      `json:"salaryMax,omitempty"`
+	Lat         float64  `json:"lat"`
+	Lng         float64  `json:"lng"`
+	WorkFormat  string   `json:"workFormat,omitempty"`
 }
 
 type PublicOpportunitiesResponse struct {
@@ -58,7 +59,8 @@ func queryPublicOpportunities(ctx context.Context, database *db.Database, city s
 			COALESCE(o.salary_min, 0) AS salary_min,
 			COALESCE(o.salary_max, 0) AS salary_max,
 			o.lat::double precision,
-			o.lng::double precision
+			o.lng::double precision,
+			o.work_format
 		FROM opportunities o
 		JOIN companies c ON c.id = o.employer_company_id
 		LEFT JOIN opportunity_tags ot ON ot.opportunity_id = o.id
@@ -72,7 +74,7 @@ func queryPublicOpportunities(ctx context.Context, database *db.Database, city s
 					AND lower(COALESCE(o.city_text,'')) = lower($1)
 				)
 			)
-		GROUP BY o.id, o.title, c.name, o.type, o.salary_min, o.salary_max, o.lat, o.lng
+		GROUP BY o.id, o.title, c.name, o.type, o.salary_min, o.salary_max, o.lat, o.lng, o.work_format
 		ORDER BY o.created_at DESC
 		LIMIT 200
 	`
@@ -97,6 +99,7 @@ func queryPublicOpportunities(ctx context.Context, database *db.Database, city s
 			&dto.SalaryMax,
 			&dto.Lat,
 			&dto.Lng,
+			&dto.WorkFormat,
 		); err != nil {
 			return nil, err
 		}

@@ -12,11 +12,12 @@ import (
 )
 
 type ApplicantProfileUpdateRequest struct {
-	FullName   *string `json:"fullName"`
-	University *string `json:"university"`
-	Course     *string `json:"course"`
-	Resume     *string `json:"resume"`
-	Portfolio  *any    `json:"portfolio"`
+	FullName   *string  `json:"fullName"`
+	University *string  `json:"university"`
+	Course     *string  `json:"course"`
+	Resume     *string  `json:"resume"`
+	Portfolio  *any     `json:"portfolio"`
+	Skills     []string `json:"skills"`
 }
 
 func ApplicantProfileUpdate(cfg *config.Config, database *db.Database) http.HandlerFunc {
@@ -53,18 +54,20 @@ func ApplicantProfileUpdate(cfg *config.Config, database *db.Database) http.Hand
 		}
 
 		_, err := database.DB.Exec(ctx, `
-			INSERT INTO applicants_profiles (user_id, full_name, university, course, resume, portfolio)
+			INSERT INTO applicants_profiles (user_id, full_name, university, course, resume, portfolio, skills)
 			VALUES (
 				$1,
 				$2, $3, $4, $5,
-				$6::jsonb
+				$6::jsonb,
+				$7
 			)
 			ON CONFLICT (user_id) DO UPDATE SET
 				full_name=COALESCE(EXCLUDED.full_name, applicants_profiles.full_name),
 				university=COALESCE(EXCLUDED.university, applicants_profiles.university),
 				course=COALESCE(EXCLUDED.course, applicants_profiles.course),
 				resume=COALESCE(EXCLUDED.resume, applicants_profiles.resume),
-				portfolio=COALESCE(EXCLUDED.portfolio, applicants_profiles.portfolio)
+				portfolio=COALESCE(EXCLUDED.portfolio, applicants_profiles.portfolio),
+				skills=COALESCE(EXCLUDED.skills, applicants_profiles.skills)
 		`,
 			claims.UserID,
 			*req.FullName,
@@ -72,6 +75,7 @@ func ApplicantProfileUpdate(cfg *config.Config, database *db.Database) http.Hand
 			req.Course,
 			req.Resume,
 			portfolioArg,
+			req.Skills,
 		)
 		if err != nil {
 			http.Error(w, "profile_update_failed", http.StatusInternalServerError)

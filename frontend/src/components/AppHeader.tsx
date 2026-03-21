@@ -1,6 +1,7 @@
 import Image from 'next/image';
 import Link from 'next/link';
 import ThemeToggle from './theme/ThemeToggle';
+import AuthStatus from './AuthStatus';
 
 export default function AppHeader() {
   return (
@@ -15,17 +16,9 @@ export default function AppHeader() {
         </Link>
         <div className="flex items-center gap-2">
           <ThemeToggle />
-          <nav className="hidden items-center gap-3 sm:flex">
-            <Link className="text-sm font-medium text-black/75 hover:text-black dark:text-white/75 dark:hover:text-white" href="/login">
-              Вход
-            </Link>
-            <Link className="text-sm font-medium text-black/75 hover:text-black dark:text-white/75 dark:hover:text-white" href="/register">
-              Регистрация
-            </Link>
-          </nav>
+          <AuthStatus />
         </div>
       </div>
     </header>
   );
 }
-

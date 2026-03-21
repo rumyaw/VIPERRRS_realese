@@ -8,13 +8,8 @@ import (
 )
 
 func EnsureDemoData(ctx context.Context, pool *pgxpool.Pool) error {
-	var approvedCount int
-	if err := pool.QueryRow(ctx, `SELECT COUNT(*) FROM opportunities WHERE status='APPROVED'`).Scan(&approvedCount); err != nil {
-		return err
-	}
-	if approvedCount > 0 {
-		return nil
-	}
+	// Always create demo users regardless of opportunities count
+	// This ensures we always have test accounts
 
 	// Create demo employer.
 	demoEmployerEmail := getenvDefault("TRUMPLIN_DEMO_EMPLOYER_EMAIL", "demo_employer@trumplin.local")
@@ -150,6 +145,80 @@ func EnsureDemoData(ctx context.Context, pool *pgxpool.Pool) error {
 				); err != nil {
 					return err
 				}
+			}
+		}
+	}
+
+	// Create demo applicants
+	demoApplicants := []struct {
+		email       string
+		password    string
+		displayName string
+		fullName    string
+		resume      string
+		skills      []string
+	}{
+		{
+			email:       "student1@trumplin.local",
+			password:    "demo1234",
+			displayName: "Алексей Иванов",
+			fullName:    "Иванов Алексей Петрович",
+			resume:      "Студент 4 курса ФИИТ. Изучаю Go и React. Опыт командной разработки.",
+			skills:      []string{"Go", "PostgreSQL", "React", "Docker"},
+		},
+		{
+			email:       "student2@trumplin.local",
+			password:    "demo1234",
+			displayName: "Мария Петрова",
+			fullName:    "Петрова Мария Сергеевна",
+			resume:      "Студентка 3 курса ПМИ. Интересуется фронтендом и TypeScript.",
+			skills:      []string{"React", "TypeScript", "SQL", "Docker"},
+		},
+		{
+			email:       "student3@trumplin.local",
+			password:    "demo1234",
+			displayName: "Дмитрий Сидоров",
+			fullName:    "Сидоров Дмитрий Александрович",
+			resume:      "Выпускник. Ищу стажировку в backend разработке.",
+			skills:      []string{"Go", "PostgreSQL", "SQL"},
+		},
+	}
+
+	for _, app := range demoApplicants {
+		var applicantID string
+		err := pool.QueryRow(ctx, `SELECT id::text FROM users WHERE email=$1`, app.email).Scan(&applicantID)
+		if err != nil {
+			pwHash, err := HashPassword(app.password)
+			if err != nil {
+				return err
+			}
+			if err := pool.QueryRow(ctx,
+				`INSERT INTO users (email, password_hash, role, status, display_name)
+				 VALUES ($1,$2,'APPLICANT','ACTIVE',$3)
+				 RETURNING id::text`,
+				app.email, pwHash, app.displayName,
+			).Scan(&applicantID); err != nil {
+				return err
+			}
+
+			// Create applicant profile
+			_, err = pool.Exec(ctx,
+				`INSERT INTO applicants_profiles (user_id, full_name, university, course, resume, skills)
+				 VALUES ($1,$2,'МГУ','4 курс',$3,$4)`,
+				applicantID, app.fullName, app.resume, app.skills,
+			)
+			if err != nil {
+				return err
+			}
+
+			// Create applicant privacy
+			_, err = pool.Exec(ctx,
+				`INSERT INTO applicant_privacy (user_id, hide_applications, hide_resume, allow_network_profiles)
+				 VALUES ($1,false,true,true)`,
+				applicantID,
+			)
+			if err != nil {
+				return err
 			}
 		}
 	}

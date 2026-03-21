@@ -8,5 +8,5 @@ export type OpportunityMarkerDTO = {
   salaryMax?: number;
   lat: number;
   lng: number;
+  workFormat?: string;
 };
-

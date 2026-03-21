@@ -9,34 +9,44 @@ services:
       - "5432:5432"
     volumes:
       - trumplin_pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U trumplin"]
+      interval: 2s
+      timeout: 5s
+      retries: 10
 
   backend:
     build:
       context: ./backend
+    env_file:
+      - .env
     environment:
       TRUMPLIN_DATABASE_DSN: postgres://trumplin:trumplin@postgres:5432/trumplin?sslmode=disable
-      TRUMPLIN_JWT_SECRET: change_me_super_secret
-      TRUMPLIN_HTTP_PORT: 8080
-      TRUMPLIN_ACCESS_TOKEN_TTL_SECONDS: 900
+      TRUMPLIN_JWT_SECRET: ${TRUMPLIN_JWT_SECRET}
+      TRUMPLIN_HTTP_PORT: ${TRUMPLIN_HTTP_PORT:-8080}
+      TRUMPLIN_CORS_ORIGIN: http://localhost:3000
+      TRUMPLIN_ACCESS_TOKEN_TTL_SECONDS: ${TRUMPLIN_ACCESS_TOKEN_TTL_SECONDS:-900}
       TRUMPLIN_COOKIE_SECURE: 0
-      TRUMPLIN_ADMIN_EMAIL: admin@example.com
-      TRUMPLIN_ADMIN_PASSWORD: change_me_admin_password
-      YANDEX_GEOCODER_KEY: ${YANDEX_GEOCODER_KEY:-CHANGE_ME}
-      YANDEX_GEOCODER_BASE_URL: https://geocode-maps.yandex.ru/1.x/
+      TRUMPLIN_ADMIN_EMAIL: ${TRUMPLIN_ADMIN_EMAIL}
+      TRUMPLIN_ADMIN_PASSWORD: ${TRUMPLIN_ADMIN_PASSWORD}
+      YANDEX_GEOCODER_KEY: ${YANDEX_GEOCODER_KEY}
+      YANDEX_GEOCODER_BASE_URL: ${YANDEX_GEOCODER_BASE_URL:-https://geocode-maps.yandex.ru/1.x/}
     ports:
       - "8080:8080"
     depends_on:
-      - postgres
+      postgres:
+        condition: service_healthy
+    restart: on-failure
 
   frontend:
     build:
       context: ./frontend
       args:
-        NEXT_PUBLIC_API_BASE_URL: http://localhost:8080
-        NEXT_PUBLIC_YANDEX_API_KEY: ${YANDEX_JAVASCRIPT_API_KEY:-CHANGE_ME}
+        NEXT_PUBLIC_API_BASE_URL: http://backend:8080
+        NEXT_PUBLIC_YANDEX_API_KEY: ${YANDEX_JAVASCRIPT_API_KEY}
     environment:
-      NEXT_PUBLIC_API_BASE_URL: http://localhost:8080
-      NEXT_PUBLIC_YANDEX_API_KEY: ${YANDEX_JAVASCRIPT_API_KEY:-CHANGE_ME}
+      NEXT_PUBLIC_API_BASE_URL: http://backend:8080
+      NEXT_PUBLIC_YANDEX_API_KEY: ${YANDEX_JAVASCRIPT_API_KEY}
     ports:
       - "3000:3000"
     depends_on:
@@ -44,4 +54,3 @@ services:
 
 volumes:
   trumplin_pgdata:
-

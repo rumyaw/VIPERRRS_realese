@@ -13,6 +13,7 @@ import (
 
 type ApplicantContactsCreateRequest struct {
 	TargetUserID string `json:"targetUserId"`
+	Email        string `json:"email"`
 }
 
 func ApplicantContactsCreate(cfg *config.Config, database *db.Database) http.HandlerFunc {
@@ -34,8 +35,26 @@ func ApplicantContactsCreate(cfg *config.Config, database *db.Database) http.Han
 		}
 
 		targetID := strings.TrimSpace(req.TargetUserID)
+		
+		// If email is provided, look up user by email
+		if targetID == "" && req.Email != "" {
+			email := strings.TrimSpace(req.Email)
+			if email == "" {
+				http.Error(w, "email_required", http.StatusBadRequest)
+				return
+			}
+			var foundID string
+			if err := database.DB.QueryRow(ctx, `
+				SELECT id FROM users WHERE email=$1 AND role='APPLICANT'
+			`, email).Scan(&foundID); err != nil {
+				http.Error(w, "user_not_found", http.StatusNotFound)
+				return
+			}
+			targetID = foundID
+		}
+
 		if targetID == "" {
-			http.Error(w, "targetUserId_required", http.StatusBadRequest)
+			http.Error(w, "targetUserId_or_email_required", http.StatusBadRequest)
 			return
 		}
 		if targetID == claims.UserID {
