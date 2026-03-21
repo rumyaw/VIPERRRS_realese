@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
-import { apiPost } from '@/lib/api';
+import { apiGet, apiPost } from '@/lib/api';
 
 type MeResponse = {
   id: string;
@@ -19,15 +19,8 @@ export default function AuthStatus() {
   useEffect(() => {
     const checkAuth = async () => {
       try {
-        const resp = await fetch(`${process.env.NEXT_PUBLIC_API_BASE_URL}/api/me`, {
-          credentials: 'include',
-        });
-        if (resp.ok) {
-          const data = await resp.json();
-          setMe(data);
-        } else {
-          setMe(null);
-        }
+        const data = await apiGet<MeResponse>('/api/me');
+        setMe(data);
       } catch {
         setMe(null);
       } finally {

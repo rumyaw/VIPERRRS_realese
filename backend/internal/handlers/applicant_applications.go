@@ -42,8 +42,8 @@ func ApplicantApplicationCreate(cfg *config.Config, database *db.Database) http.
 
 		// Validate opportunity is public/active.
 		var oppStatus string
-		if err := database.DB.QueryRow(ctx, `
-			SELECT status FROM opportunities WHERE id=$1
+		if err := database.DB.QueryRowContext(ctx, `
+			SELECT status FROM opportunities WHERE id=?
 		`, oppID).Scan(&oppStatus); err != nil {
 			http.Error(w, "opportunity_not_found", http.StatusNotFound)
 			return
@@ -57,12 +57,12 @@ func ApplicantApplicationCreate(cfg *config.Config, database *db.Database) http.
 
 		// Insert or return existing.
 		var applicationID string
-		err := database.DB.QueryRow(ctx, `
+		err := database.DB.QueryRowContext(ctx, `
 			INSERT INTO applications (opportunity_id, applicant_user_id, status)
-			VALUES ($1, $2, 'PENDING')
+			VALUES (?, ?, 'PENDING')
 			ON CONFLICT (opportunity_id, applicant_user_id)
-			DO UPDATE SET updated_at=now()
-			RETURNING id::text
+			DO UPDATE SET updated_at=CURRENT_TIMESTAMP
+			RETURNING id
 		`, oppID, claims.UserID).Scan(&applicationID)
 		if err != nil {
 			http.Error(w, "application_create_failed", http.StatusInternalServerError)
@@ -88,10 +88,10 @@ func ApplicantApplicationsList(cfg *config.Config, database *db.Database) http.H
 			return
 		}
 
-		rows, err := database.DB.Query(ctx, `
+		rows, err := database.DB.QueryContext(ctx, `
 			SELECT
-				a.id::text,
-				o.id::text,
+				a.id,
+				o.id,
 				o.title,
 				o.type,
 				c.name AS company,
@@ -105,13 +105,13 @@ func ApplicantApplicationsList(cfg *config.Config, database *db.Database) http.H
 				COALESCE(o.lng,0) AS lng,
 				o.salary_min,
 				o.salary_max,
-				COALESCE(array_agg(t.name) FILTER (WHERE t.name IS NOT NULL), ARRAY[]::text[]) as skills
+				COALESCE(GROUP_CONCAT(t.name, ','), '') as skills
 			FROM applications a
 			JOIN opportunities o ON o.id=a.opportunity_id
 			JOIN companies c ON c.id=o.employer_company_id
 			LEFT JOIN opportunity_tags ot ON ot.opportunity_id=o.id
 			LEFT JOIN tags t ON t.id=ot.tag_id
-			WHERE a.applicant_user_id=$1
+			WHERE a.applicant_user_id=?
 			GROUP BY
 				a.id, o.id, c.name,
 				a.status, a.created_at,
@@ -155,7 +155,7 @@ func ApplicantApplicationsList(cfg *config.Config, database *db.Database) http.H
 			var lat, lng float64
 			var salaryMin sql.NullInt32
 			var salaryMax sql.NullInt32
-			var skills []string
+			var skillsCSV string
 			if err := rows.Scan(
 				&it.ID,
 				&it.OpportunityID,
@@ -172,7 +172,7 @@ func ApplicantApplicationsList(cfg *config.Config, database *db.Database) http.H
 				&lng,
 				&salaryMin,
 				&salaryMax,
-				&skills,
+				&skillsCSV,
 			); err != nil {
 				continue
 			}
@@ -186,7 +186,7 @@ func ApplicantApplicationsList(cfg *config.Config, database *db.Database) http.H
 			}
 			it.Lat = lat
 			it.Lng = lng
-			it.Skills = skills
+			it.Skills = parseSkillsCSV(skillsCSV)
 			if salaryMin.Valid {
 				val := int(salaryMin.Int32)
 				it.SalaryMin = &val

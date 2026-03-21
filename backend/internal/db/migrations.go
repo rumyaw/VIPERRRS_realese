@@ -2,9 +2,8 @@ package db
 
 import (
 	"database/sql"
-
-	"github.com/jackc/pgx/v5/stdlib"
 	"github.com/pressly/goose/v3"
+	_ "modernc.org/sqlite"
 )
 
 func ApplyMigrationsFromDSN(dsn string, migrationsDir string) error {
@@ -19,7 +18,7 @@ func ApplyMigrationsFromDSN(dsn string, migrationsDir string) error {
 // ApplyMigrationsDB runs goose migrations using provided *sql.DB.
 func ApplyMigrationsDB(db *sql.DB, migrationsDir string) error {
 	// Ensure goose knows the SQL dialect.
-	goose.SetDialect("postgres")
+	goose.SetDialect("sqlite3")
 	if err := goose.Up(db, migrationsDir); err != nil {
 		return err
 	}
@@ -28,9 +27,6 @@ func ApplyMigrationsDB(db *sql.DB, migrationsDir string) error {
 
 // OpenStdlib opens a database/sql handle for goose/other tooling.
 func OpenStdlib(dsn string) (*sql.DB, error) {
-	return sql.Open("pgx", dsn) // driver is registered by stdlib import
+	return sql.Open("sqlite", dsn)
 }
-
-// Make sure stdlib driver is linked.
-var _ = stdlib.RegisterConnConfig
 

@@ -54,16 +54,16 @@ func Register(cfg *config.Config, database *db.Database, jwtSecret string) http.
 		}
 
 		var userID string
-		tx, err := database.DB.Begin(ctx)
+		tx, err := database.DB.BeginTx(ctx, nil)
 		if err != nil {
 			http.Error(w, "db_error", http.StatusInternalServerError)
 			return
 		}
-		defer func() { _ = tx.Rollback(ctx) }()
+		defer func() { _ = tx.Rollback() }()
 
-		if err := tx.QueryRow(ctx,
+		if err := tx.QueryRowContext(ctx,
 			`INSERT INTO users (email, password_hash, role, status, display_name)
-			 VALUES ($1,$2,$3,'ACTIVE',$4)
+			 VALUES (?,?,?,'ACTIVE',?)
 			 RETURNING id`,
 			req.Email, pwHash, role, req.DisplayName,
 		).Scan(&userID); err != nil {
@@ -77,9 +77,9 @@ func Register(cfg *config.Config, database *db.Database, jwtSecret string) http.
 				http.Error(w, "companyName_required", http.StatusBadRequest)
 				return
 			}
-			if _, err := tx.Exec(ctx,
+			if _, err := tx.ExecContext(ctx,
 				`INSERT INTO companies (owner_user_id, name, description)
-				 VALUES ($1,$2,$3)`,
+				 VALUES (?,?,?)`,
 				userID, *req.CompanyName, "",
 			); err != nil {
 				http.Error(w, "company_create_failed", http.StatusInternalServerError)
@@ -91,18 +91,18 @@ func Register(cfg *config.Config, database *db.Database, jwtSecret string) http.
 				defaultFull := req.DisplayName
 				req.FullName = &defaultFull
 			}
-			if _, err := tx.Exec(ctx,
+			if _, err := tx.ExecContext(ctx,
 				`INSERT INTO applicants_profiles (user_id, full_name, university, course, resume, portfolio)
-				 VALUES ($1,$2,'', '', '', '{}'::jsonb)`,
+				 VALUES (?,?,'', '', '', '{}')`,
 				userID, *req.FullName,
 			); err != nil {
 				http.Error(w, "profile_create_failed", http.StatusInternalServerError)
 				return
 			}
-			_, _ = tx.Exec(ctx, `INSERT INTO applicant_privacy (user_id) VALUES ($1) ON CONFLICT (user_id) DO NOTHING`, userID)
+			_, _ = tx.ExecContext(ctx, `INSERT INTO applicant_privacy (user_id) VALUES (?) ON CONFLICT (user_id) DO NOTHING`, userID)
 		}
 
-		if err := tx.Commit(ctx); err != nil {
+		if err := tx.Commit(); err != nil {
 			http.Error(w, "tx_commit_failed", http.StatusInternalServerError)
 			return
 		}
@@ -120,8 +120,8 @@ func Register(cfg *config.Config, database *db.Database, jwtSecret string) http.
 		}
 		refreshHash := auth.HashRefreshToken(refreshToken)
 		refreshTTL := 30 * 24 * time.Hour
-		_, err = database.DB.Exec(ctx,
-			`INSERT INTO refresh_tokens (token_hash, user_id, expires_at) VALUES ($1,$2,$3)`,
+		_, err = database.DB.ExecContext(ctx,
+			`INSERT INTO refresh_tokens (token_hash, user_id, expires_at) VALUES (?,?,?)`,
 			refreshHash, userID, time.Now().Add(refreshTTL),
 		)
 		if err != nil {

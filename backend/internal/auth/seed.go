@@ -2,18 +2,17 @@ package auth
 
 import (
 	"context"
-
-	"github.com/jackc/pgx/v5/pgxpool"
+	"database/sql"
 )
 
 // EnsureAdmin creates an initial ADMIN user for curator access if env vars are provided.
-func EnsureAdmin(ctx context.Context, pool *pgxpool.Pool, adminEmail string, adminPassword string) error {
+func EnsureAdmin(ctx context.Context, db *sql.DB, adminEmail string, adminPassword string) error {
 	if adminEmail == "" || adminPassword == "" {
 		return nil
 	}
 
 	var exists bool
-	if err := pool.QueryRow(ctx, `SELECT EXISTS(SELECT 1 FROM users WHERE email=$1)`, adminEmail).Scan(&exists); err != nil {
+	if err := db.QueryRowContext(ctx, `SELECT EXISTS(SELECT 1 FROM users WHERE email=?)`, adminEmail).Scan(&exists); err != nil {
 		return err
 	}
 	if exists {
@@ -25,9 +24,9 @@ func EnsureAdmin(ctx context.Context, pool *pgxpool.Pool, adminEmail string, adm
 		return err
 	}
 
-	_, err = pool.Exec(ctx,
+	_, err = db.ExecContext(ctx,
 		`INSERT INTO users (email, password_hash, role, status, display_name)
-		 VALUES ($1,$2,'ADMIN','ACTIVE','Администратор')`,
+		 VALUES (?,?,'ADMIN','ACTIVE','Администратор')`,
 		adminEmail, pwHash,
 	)
 	return err

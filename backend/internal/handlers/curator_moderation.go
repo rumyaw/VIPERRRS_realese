@@ -19,10 +19,10 @@ func CuratorCompaniesPendingList(cfg *config.Config, database *db.Database) http
 		defer cancel()
 
 		// claims check is done by middleware.
-		rows, err := database.DB.Query(ctx, `
+		rows, err := database.DB.QueryContext(ctx, `
 			SELECT
-				c.id::text,
-				c.owner_user_id::text,
+				c.id,
+				c.owner_user_id,
 				c.name,
 				c.description,
 				c.verification_status,
@@ -101,30 +101,30 @@ func CuratorCompanyVerification(cfg *config.Config, database *db.Database) http.
 
 		comment := strings.TrimSpace(req.Comment)
 
-		tx, err := database.DB.Begin(ctx)
+		tx, err := database.DB.BeginTx(ctx, nil)
 		if err != nil {
 			http.Error(w, "db_error", http.StatusInternalServerError)
 			return
 		}
-		defer func() { _ = tx.Rollback(ctx) }()
+		defer func() { _ = tx.Rollback() }()
 
-		if _, err := tx.Exec(ctx, `
-			UPDATE companies SET verification_status=$1, updated_at=now()
-			WHERE id=$2
+		if _, err := tx.ExecContext(ctx, `
+			UPDATE companies SET verification_status=?, updated_at=CURRENT_TIMESTAMP
+			WHERE id=?
 		`, status, companyId); err != nil {
 			http.Error(w, "company_update_failed", http.StatusBadRequest)
 			return
 		}
 
-		if _, err := tx.Exec(ctx, `
+		if _, err := tx.ExecContext(ctx, `
 			INSERT INTO company_verifications (company_id, curator_user_id, status, comment)
-			VALUES ($1,$2,$3,$4)
+			VALUES (?,?,?,?)
 		`, companyId, claims.UserID, status, comment); err != nil {
 			http.Error(w, "company_verification_failed", http.StatusInternalServerError)
 			return
 		}
 
-		if err := tx.Commit(ctx); err != nil {
+		if err := tx.Commit(); err != nil {
 			http.Error(w, "tx_commit_failed", http.StatusInternalServerError)
 			return
 		}
@@ -139,9 +139,9 @@ func CuratorOpportunitiesPendingList(cfg *config.Config, database *db.Database) 
 		ctx, cancel := context.WithTimeout(r.Context(), 10*time.Second)
 		defer cancel()
 
-		rows, err := database.DB.Query(ctx, `
+		rows, err := database.DB.QueryContext(ctx, `
 			SELECT
-				o.id::text,
+				o.id,
 				o.title,
 				o.type,
 				o.work_format,
@@ -220,18 +220,19 @@ func CuratorOpportunityStatusUpdate(cfg *config.Config, database *db.Database) h
 			return
 		}
 
-		res, err := database.DB.Exec(ctx, `
+		res, err := database.DB.ExecContext(ctx, `
 			UPDATE opportunities
-			SET status=$1,
-				updated_at=now(),
-				curator_user_id=$2
-			WHERE id=$3
+			SET status=?,
+				updated_at=CURRENT_TIMESTAMP,
+				curator_user_id=?
+			WHERE id=?
 		`, status, claims.UserID, opportunityId)
 		if err != nil {
 			http.Error(w, "db_error", http.StatusInternalServerError)
 			return
 		}
-		if res.RowsAffected() == 0 {
+		affected, _ := res.RowsAffected()
+		if affected == 0 {
 			http.Error(w, "not_found", http.StatusNotFound)
 			return
 		}

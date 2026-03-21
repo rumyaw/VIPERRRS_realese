@@ -35,8 +35,8 @@ func Login(cfg *config.Config, database *db.Database, jwtSecret string) http.Han
 		var role string
 		var status string
 		var passwordHash string
-		if err := database.DB.QueryRow(ctx,
-			`SELECT id, role, status, password_hash FROM users WHERE email=$1`,
+		if err := database.DB.QueryRowContext(ctx,
+			`SELECT id, role, status, password_hash FROM users WHERE email=?`,
 			req.Email,
 		).Scan(&userID, &role, &status, &passwordHash); err != nil {
 			http.Error(w, "invalid_credentials", http.StatusUnauthorized)
@@ -68,8 +68,8 @@ func Login(cfg *config.Config, database *db.Database, jwtSecret string) http.Han
 		refreshHash := auth.HashRefreshToken(refreshToken)
 		refreshTTL := 30 * 24 * time.Hour
 
-		if _, err := database.DB.Exec(ctx,
-			`INSERT INTO refresh_tokens (token_hash, user_id, expires_at) VALUES ($1,$2,$3)`,
+		if _, err := database.DB.ExecContext(ctx,
+			`INSERT INTO refresh_tokens (token_hash, user_id, expires_at) VALUES (?,?,?)`,
 			refreshHash, userID, time.Now().Add(refreshTTL),
 		); err != nil {
 			http.Error(w, "refresh_store_failed", http.StatusInternalServerError)

@@ -20,8 +20,8 @@ func ptrStr(s string) *string {
 
 func employerCompanyID(ctx context.Context, database *db.Database, employerUserID string) (string, error) {
 	var companyID string
-	if err := database.DB.QueryRow(ctx,
-		`SELECT id::text FROM companies WHERE owner_user_id=$1`,
+	if err := database.DB.QueryRowContext(ctx,
+		`SELECT id FROM companies WHERE owner_user_id=?`,
 		employerUserID,
 	).Scan(&companyID); err != nil {
 		if errors.Is(err, sql.ErrNoRows) {

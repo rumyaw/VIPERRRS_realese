@@ -51,9 +51,9 @@ func (s *Service) Geocode(ctx context.Context, query string) (lat float64, lng f
 	}
 
 	var cachedLat, cachedLng float64
-	if err := s.db.DB.QueryRow(
+	if err := s.db.DB.QueryRowContext(
 		ctx,
-		`SELECT lat, lng FROM address_geocode_cache WHERE norm_query=$1`,
+		`SELECT lat, lng FROM address_geocode_cache WHERE norm_query=?`,
 		q,
 	).Scan(&cachedLat, &cachedLng); err == nil {
 		return cachedLat, cachedLng, nil
@@ -65,10 +65,10 @@ func (s *Service) Geocode(ctx context.Context, query string) (lat float64, lng f
 	}
 
 	// Cache best-effort.
-	_, _ = s.db.DB.Exec(ctx,
+	_, _ = s.db.DB.ExecContext(ctx,
 		`INSERT INTO address_geocode_cache (norm_query, lat, lng, created_at, last_success_at)
-		 VALUES ($1,$2,$3,now(),now())
-		 ON CONFLICT (norm_query) DO UPDATE SET lat=EXCLUDED.lat, lng=EXCLUDED.lng, last_success_at=now()`,
+		 VALUES (?,?,?,CURRENT_TIMESTAMP,CURRENT_TIMESTAMP)
+		 ON CONFLICT (norm_query) DO UPDATE SET lat=EXCLUDED.lat, lng=EXCLUDED.lng, last_success_at=CURRENT_TIMESTAMP`,
 		q, lat, lng,
 	)
 

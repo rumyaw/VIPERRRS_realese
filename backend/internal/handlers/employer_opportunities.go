@@ -72,8 +72,8 @@ func EmployerOpportunitiesCreate(cfg *config.Config, database *db.Database) http
 		}
 
 		var verificationStatus string
-		if err := database.DB.QueryRow(ctx,
-			`SELECT verification_status FROM companies WHERE id=$1`,
+		if err := database.DB.QueryRowContext(ctx,
+			`SELECT verification_status FROM companies WHERE id=?`,
 			companyID,
 		).Scan(&verificationStatus); err != nil {
 			http.Error(w, "company_not_found", http.StatusForbidden)
@@ -149,14 +149,14 @@ func EmployerOpportunitiesCreate(cfg *config.Config, database *db.Database) http
 		}
 
 		var opportunityID string
-		tx, err := database.DB.Begin(ctx)
+		tx, err := database.DB.BeginTx(ctx, nil)
 		if err != nil {
 			http.Error(w, "db_error", http.StatusInternalServerError)
 			return
 		}
-		defer func() { _ = tx.Rollback(ctx) }()
+		defer func() { _ = tx.Rollback() }()
 
-		if err := tx.QueryRow(ctx,
+		if err := tx.QueryRowContext(ctx,
 			`INSERT INTO opportunities (
 				employer_company_id, curator_user_id,
 				title, description, organizer_name,
@@ -167,15 +167,15 @@ func EmployerOpportunitiesCreate(cfg *config.Config, database *db.Database) http
 				starts_at, ends_at,
 				status
 			) VALUES (
-				$1, NULL,
-				$2, $3, $4,
-				$5, $6,
-				$7, $8, $9,
-				$10, $11,
-				$12, $13,
-				$14, $15,
-				$16
-			) RETURNING id::text`,
+				?, NULL,
+				?, ?, ?,
+				?, ?,
+				?, ?, ?,
+				?, ?,
+				?, ?,
+				?, ?,
+				?
+			) RETURNING id`,
 			companyID,
 			req.Title, req.Description, req.Organizer,
 			typ, workFormat,
@@ -196,22 +196,22 @@ func EmployerOpportunitiesCreate(cfg *config.Config, database *db.Database) http
 				continue
 			}
 			var tagID string
-			if err := tx.QueryRow(ctx,
-				`INSERT INTO tags (name) VALUES ($1)
+			if err := tx.QueryRowContext(ctx,
+				`INSERT INTO tags (name) VALUES (?)
 				 ON CONFLICT (name) DO NOTHING
-				 RETURNING id::text`,
+				 RETURNING id`,
 				skill,
 			).Scan(&tagID); err != nil {
 				// RETURNING may not happen on conflict, fallback to select.
-				if err2 := tx.QueryRow(ctx, `SELECT id::text FROM tags WHERE name=$1`, skill).Scan(&tagID); err2 != nil {
+				if err2 := tx.QueryRowContext(ctx, `SELECT id FROM tags WHERE name=?`, skill).Scan(&tagID); err2 != nil {
 					http.Error(w, "tag_create_failed", http.StatusInternalServerError)
 					return
 				}
 			}
 
-			_, err := tx.Exec(ctx,
+			_, err := tx.ExecContext(ctx,
 				`INSERT INTO opportunity_tags (opportunity_id, tag_id)
-				 VALUES ($1,$2)
+				 VALUES (?,?)
 				 ON CONFLICT DO NOTHING`,
 				opportunityID, tagID,
 			)
@@ -221,7 +221,7 @@ func EmployerOpportunitiesCreate(cfg *config.Config, database *db.Database) http
 			}
 		}
 
-		if err := tx.Commit(ctx); err != nil {
+		if err := tx.Commit(); err != nil {
 			http.Error(w, "tx_commit_failed", http.StatusInternalServerError)
 			return
 		}
@@ -270,9 +270,9 @@ func EmployerOpportunitiesList(cfg *config.Config, database *db.Database) http.H
 		}
 
 		// Query.
-		rows, err := database.DB.Query(ctx, `
+		rows, err := database.DB.QueryContext(ctx, `
 			SELECT
-				o.id::text,
+				o.id,
 				o.title,
 				c.name AS company,
 				o.type,
@@ -283,12 +283,12 @@ func EmployerOpportunitiesList(cfg *config.Config, database *db.Database) http.H
 				o.city_text,
 				COALESCE(o.lat,0), COALESCE(o.lng,0),
 				o.salary_min, o.salary_max,
-				COALESCE(array_agg(t.name) FILTER (WHERE t.name IS NOT NULL), ARRAY[]::text[]) as skills
+				COALESCE(GROUP_CONCAT(t.name, ','), '') as skills
 			FROM opportunities o
 			JOIN companies c ON c.id=o.employer_company_id
 			LEFT JOIN opportunity_tags ot ON ot.opportunity_id=o.id
 			LEFT JOIN tags t ON t.id=ot.tag_id
-			WHERE o.employer_company_id=$1
+			WHERE o.employer_company_id=?
 			GROUP BY o.id, c.name
 			ORDER BY o.created_at DESC
 		`, companyID)
@@ -307,6 +307,7 @@ func EmployerOpportunitiesList(cfg *config.Config, database *db.Database) http.H
 			var cityText sql.NullString
 
 			var lat, lng float64
+			var skillsCSV string
 			if err := rows.Scan(
 				&it.ID,
 				&it.Title,
@@ -318,7 +319,7 @@ func EmployerOpportunitiesList(cfg *config.Config, database *db.Database) http.H
 				&addressText, &cityText,
 				&lat, &lng,
 				&salaryMin, &salaryMax,
-				&it.Skills,
+				&skillsCSV,
 			); err != nil {
 				// simplify: if scan fails, just return empty list
 				continue
@@ -338,6 +339,7 @@ func EmployerOpportunitiesList(cfg *config.Config, database *db.Database) http.H
 			}
 			it.Lat = lat
 			it.Lng = lng
+			it.Skills = parseSkillsCSV(skillsCSV)
 			if salaryMin.Valid {
 				val := int(salaryMin.Int32)
 				it.SalaryMin = &val

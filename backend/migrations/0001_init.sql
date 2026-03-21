@@ -1,62 +1,60 @@
 -- +goose Up
-CREATE EXTENSION IF NOT EXISTS pgcrypto;
-
 CREATE TABLE IF NOT EXISTS users (
-    id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+    id TEXT PRIMARY KEY DEFAULT (lower(hex(randomblob(16)))),
     email TEXT NOT NULL UNIQUE,
     password_hash TEXT NOT NULL,
     role TEXT NOT NULL CHECK (role IN ('ADMIN','CURATOR','EMPLOYER','APPLICANT')),
     status TEXT NOT NULL DEFAULT 'ACTIVE' CHECK (status IN ('ACTIVE','BLOCKED')),
     display_name TEXT,
-    created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
-    updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
+    created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 
 CREATE INDEX IF NOT EXISTS idx_users_role ON users(role);
 
 CREATE TABLE IF NOT EXISTS refresh_tokens (
     token_hash TEXT PRIMARY KEY,
-    user_id uuid NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-    issued_at TIMESTAMPTZ NOT NULL DEFAULT now(),
-    expires_at TIMESTAMPTZ NOT NULL,
-    revoked_at TIMESTAMPTZ
+    user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    issued_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    expires_at TEXT NOT NULL,
+    revoked_at TEXT
 );
 
 CREATE TABLE IF NOT EXISTS companies (
-    id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-    owner_user_id uuid NOT NULL UNIQUE REFERENCES users(id) ON DELETE CASCADE,
+    id TEXT PRIMARY KEY DEFAULT (lower(hex(randomblob(16)))),
+    owner_user_id TEXT NOT NULL UNIQUE REFERENCES users(id) ON DELETE CASCADE,
     name TEXT NOT NULL,
     description TEXT,
     website_url TEXT,
-    social_links JSONB NOT NULL DEFAULT '[]'::jsonb,
+    social_links TEXT NOT NULL DEFAULT '[]',
     verification_status TEXT NOT NULL DEFAULT 'PENDING' CHECK (verification_status IN ('PENDING','APPROVED','REJECTED')),
-    created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
-    updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
+    created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 
 CREATE TABLE IF NOT EXISTS company_verifications (
-    id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-    company_id uuid NOT NULL REFERENCES companies(id) ON DELETE CASCADE,
-    curator_user_id uuid REFERENCES users(id) ON DELETE SET NULL,
+    id TEXT PRIMARY KEY DEFAULT (lower(hex(randomblob(16)))),
+    company_id TEXT NOT NULL REFERENCES companies(id) ON DELETE CASCADE,
+    curator_user_id TEXT REFERENCES users(id) ON DELETE SET NULL,
     status TEXT NOT NULL CHECK (status IN ('APPROVED','REJECTED')),
     comment TEXT,
-    created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+    created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 
 CREATE TABLE IF NOT EXISTS applicants_profiles (
-    user_id uuid PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
+    user_id TEXT PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
     full_name TEXT NOT NULL,
     university TEXT,
     graduation_year INT,
     course TEXT,
     resume TEXT,
-    portfolio JSONB NOT NULL DEFAULT '{}'::jsonb
+    portfolio TEXT NOT NULL DEFAULT '{}'
 );
 
 CREATE TABLE IF NOT EXISTS opportunities (
-    id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-    employer_company_id uuid NOT NULL REFERENCES companies(id) ON DELETE CASCADE,
-    curator_user_id uuid REFERENCES users(id) ON DELETE SET NULL,
+    id TEXT PRIMARY KEY DEFAULT (lower(hex(randomblob(16)))),
+    employer_company_id TEXT NOT NULL REFERENCES companies(id) ON DELETE CASCADE,
+    curator_user_id TEXT REFERENCES users(id) ON DELETE SET NULL,
 
     title TEXT NOT NULL,
     description TEXT NOT NULL,
@@ -74,45 +72,45 @@ CREATE TABLE IF NOT EXISTS opportunities (
     salary_min INT,
     salary_max INT,
 
-    starts_at TIMESTAMPTZ,
-    ends_at TIMESTAMPTZ,
+    starts_at TEXT,
+    ends_at TEXT,
 
     status TEXT NOT NULL DEFAULT 'PENDING' CHECK (status IN ('DRAFT','PENDING','APPROVED','REJECTED','SCHEDULED','CLOSED')),
-    created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
-    updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
+    created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 
 CREATE TABLE IF NOT EXISTS tags (
-    id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+    id TEXT PRIMARY KEY DEFAULT (lower(hex(randomblob(16)))),
     name TEXT NOT NULL UNIQUE
 );
 
 CREATE TABLE IF NOT EXISTS opportunity_tags (
-    opportunity_id uuid NOT NULL REFERENCES opportunities(id) ON DELETE CASCADE,
-    tag_id uuid NOT NULL REFERENCES tags(id) ON DELETE CASCADE,
+    opportunity_id TEXT NOT NULL REFERENCES opportunities(id) ON DELETE CASCADE,
+    tag_id TEXT NOT NULL REFERENCES tags(id) ON DELETE CASCADE,
     PRIMARY KEY (opportunity_id, tag_id)
 );
 
 CREATE TABLE IF NOT EXISTS applications (
-    id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-    opportunity_id uuid NOT NULL REFERENCES opportunities(id) ON DELETE CASCADE,
-    applicant_user_id uuid NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    id TEXT PRIMARY KEY DEFAULT (lower(hex(randomblob(16)))),
+    opportunity_id TEXT NOT NULL REFERENCES opportunities(id) ON DELETE CASCADE,
+    applicant_user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
     status TEXT NOT NULL DEFAULT 'PENDING' CHECK (status IN ('PENDING','ACCEPTED','DECLINED','RESERVED')),
-    created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
-    updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+    created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
     UNIQUE(opportunity_id, applicant_user_id)
 );
 
 CREATE TABLE IF NOT EXISTS network_contacts (
-    id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-    requester_user_id uuid NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-    target_user_id uuid NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-    created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+    id TEXT PRIMARY KEY DEFAULT (lower(hex(randomblob(16)))),
+    requester_user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    target_user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
     UNIQUE(requester_user_id, target_user_id)
 );
 
 CREATE TABLE IF NOT EXISTS applicant_privacy (
-    user_id uuid PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
+    user_id TEXT PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
     hide_applications BOOLEAN NOT NULL DEFAULT false,
     hide_resume BOOLEAN NOT NULL DEFAULT true,
     allow_network_profiles BOOLEAN NOT NULL DEFAULT true

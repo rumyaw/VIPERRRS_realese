@@ -13,7 +13,6 @@ import (
 
 type ApplicantContactsCreateRequest struct {
 	TargetUserID string `json:"targetUserId"`
-	Email        string `json:"email"`
 }
 
 func ApplicantContactsCreate(cfg *config.Config, database *db.Database) http.HandlerFunc {
@@ -35,26 +34,8 @@ func ApplicantContactsCreate(cfg *config.Config, database *db.Database) http.Han
 		}
 
 		targetID := strings.TrimSpace(req.TargetUserID)
-		
-		// If email is provided, look up user by email
-		if targetID == "" && req.Email != "" {
-			email := strings.TrimSpace(req.Email)
-			if email == "" {
-				http.Error(w, "email_required", http.StatusBadRequest)
-				return
-			}
-			var foundID string
-			if err := database.DB.QueryRow(ctx, `
-				SELECT id FROM users WHERE email=$1 AND role='APPLICANT'
-			`, email).Scan(&foundID); err != nil {
-				http.Error(w, "user_not_found", http.StatusNotFound)
-				return
-			}
-			targetID = foundID
-		}
-
 		if targetID == "" {
-			http.Error(w, "targetUserId_or_email_required", http.StatusBadRequest)
+			http.Error(w, "targetUserId_required", http.StatusBadRequest)
 			return
 		}
 		if targetID == claims.UserID {
@@ -64,19 +45,19 @@ func ApplicantContactsCreate(cfg *config.Config, database *db.Database) http.Han
 
 		// Target should allow network profiles and must be an applicant.
 		var allow bool
-		if err := database.DB.QueryRow(ctx, `
+		if err := database.DB.QueryRowContext(ctx, `
 			SELECT COALESCE(p.allow_network_profiles,false)
 			FROM users u
 			LEFT JOIN applicant_privacy p ON p.user_id=u.id
-			WHERE u.id=$1 AND u.role='APPLICANT'
+			WHERE u.id=? AND u.role='APPLICANT'
 		`, targetID).Scan(&allow); err != nil || !allow {
 			http.Error(w, "target_not_available", http.StatusForbidden)
 			return
 		}
 
-		if _, err := database.DB.Exec(ctx, `
+		if _, err := database.DB.ExecContext(ctx, `
 			INSERT INTO network_contacts (requester_user_id, target_user_id)
-			VALUES ($1,$2)
+			VALUES (?,?)
 			ON CONFLICT (requester_user_id, target_user_id) DO NOTHING
 		`, claims.UserID, targetID); err != nil {
 			http.Error(w, "contact_create_failed", http.StatusInternalServerError)
@@ -99,16 +80,16 @@ func ApplicantContactsList(cfg *config.Config, database *db.Database) http.Handl
 			return
 		}
 
-		rows, err := database.DB.Query(ctx, `
+		rows, err := database.DB.QueryContext(ctx, `
 			SELECT
-				nc.target_user_id::text,
+				nc.target_user_id,
 				COALESCE(ap.full_name, u.display_name, '') AS full_name,
 				nc.created_at
 			FROM network_contacts nc
 			JOIN users u ON u.id=nc.target_user_id
 			LEFT JOIN applicants_profiles ap ON ap.user_id=nc.target_user_id
 			JOIN applicant_privacy p ON p.user_id=nc.target_user_id
-			WHERE nc.requester_user_id=$1 AND p.allow_network_profiles=true
+			WHERE nc.requester_user_id=? AND p.allow_network_profiles=true
 			ORDER BY nc.created_at DESC
 		`, claims.UserID)
 		if err != nil {

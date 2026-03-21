@@ -19,7 +19,7 @@ func Logout(_ *config.Config, database *db.Database) http.HandlerFunc {
 		refreshCookie, err := r.Cookie("refresh_token")
 		if err == nil && refreshCookie != nil {
 			refreshHash := auth.HashRefreshToken(refreshCookie.Value)
-			_, _ = database.DB.Exec(ctx, `DELETE FROM refresh_tokens WHERE token_hash=$1`, refreshHash)
+			_, _ = database.DB.ExecContext(ctx, `DELETE FROM refresh_tokens WHERE token_hash=?`, refreshHash)
 		}
 
 		clearCookie(w, "access_token")

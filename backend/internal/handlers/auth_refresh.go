@@ -27,10 +27,10 @@ func Refresh(cfg *config.Config, database *db.Database, jwtSecret string) http.H
 		var userID string
 		var expiresAt time.Time
 		var revokedAt *time.Time
-		if err := database.DB.QueryRow(ctx,
+		if err := database.DB.QueryRowContext(ctx,
 			`SELECT user_id, expires_at, revoked_at
 			 FROM refresh_tokens
-			 WHERE token_hash=$1`,
+			 WHERE token_hash=?`,
 			refreshHash,
 		).Scan(&userID, &expiresAt, &revokedAt); err != nil {
 			http.Error(w, "unauthorized", http.StatusUnauthorized)
@@ -43,7 +43,7 @@ func Refresh(cfg *config.Config, database *db.Database, jwtSecret string) http.H
 		}
 
 		var role string
-		if err := database.DB.QueryRow(ctx, `SELECT role FROM users WHERE id=$1`, userID).Scan(&role); err != nil {
+		if err := database.DB.QueryRowContext(ctx, `SELECT role FROM users WHERE id=?`, userID).Scan(&role); err != nil {
 			http.Error(w, "unauthorized", http.StatusUnauthorized)
 			return
 		}
@@ -62,29 +62,29 @@ func Refresh(cfg *config.Config, database *db.Database, jwtSecret string) http.H
 			return
 		}
 
-		tx, err := database.DB.Begin(ctx)
+		tx, err := database.DB.BeginTx(ctx, nil)
 		if err != nil {
 			http.Error(w, "db_error", http.StatusInternalServerError)
 			return
 		}
-		defer func() { _ = tx.Rollback(ctx) }()
+		defer func() { _ = tx.Rollback() }()
 
 		// Rotate: revoke old refresh token, insert new one.
-		if _, err := tx.Exec(ctx, `DELETE FROM refresh_tokens WHERE token_hash=$1`, refreshHash); err != nil {
+		if _, err := tx.ExecContext(ctx, `DELETE FROM refresh_tokens WHERE token_hash=?`, refreshHash); err != nil {
 			http.Error(w, "db_error", http.StatusInternalServerError)
 			return
 		}
 
-		if _, err := tx.Exec(ctx,
+		if _, err := tx.ExecContext(ctx,
 			`INSERT INTO refresh_tokens (token_hash, user_id, expires_at)
-			 VALUES ($1,$2,$3)`,
+			 VALUES (?,?,?)`,
 			newRefreshHash, userID, time.Now().Add(refreshTTL),
 		); err != nil {
 			http.Error(w, "db_error", http.StatusInternalServerError)
 			return
 		}
 
-		if err := tx.Commit(ctx); err != nil {
+		if err := tx.Commit(); err != nil {
 			http.Error(w, "db_error", http.StatusInternalServerError)
 			return
 		}

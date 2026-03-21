@@ -1,56 +1,37 @@
 services:
-  postgres:
-    image: postgres:16
-    environment:
-      POSTGRES_USER: trumplin
-      POSTGRES_PASSWORD: trumplin
-      POSTGRES_DB: trumplin
-    ports:
-      - "5432:5432"
-    volumes:
-      - trumplin_pgdata:/var/lib/postgresql/data
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U trumplin"]
-      interval: 2s
-      timeout: 5s
-      retries: 10
-
   backend:
     build:
       context: ./backend
-    env_file:
-      - .env
     environment:
-      TRUMPLIN_DATABASE_DSN: postgres://trumplin:trumplin@postgres:5432/trumplin?sslmode=disable
-      TRUMPLIN_JWT_SECRET: ${TRUMPLIN_JWT_SECRET}
-      TRUMPLIN_HTTP_PORT: ${TRUMPLIN_HTTP_PORT:-8080}
+      TRUMPLIN_DATABASE_DSN: file:/data/trumplin.db?_pragma=foreign_keys(1)&_pragma=busy_timeout(5000)
+      TRUMPLIN_JWT_SECRET: change_me_super_secret
+      TRUMPLIN_HTTP_PORT: 8080
       TRUMPLIN_CORS_ORIGIN: http://localhost:3000
-      TRUMPLIN_ACCESS_TOKEN_TTL_SECONDS: ${TRUMPLIN_ACCESS_TOKEN_TTL_SECONDS:-900}
+      TRUMPLIN_ACCESS_TOKEN_TTL_SECONDS: 900
       TRUMPLIN_COOKIE_SECURE: 0
-      TRUMPLIN_ADMIN_EMAIL: ${TRUMPLIN_ADMIN_EMAIL}
-      TRUMPLIN_ADMIN_PASSWORD: ${TRUMPLIN_ADMIN_PASSWORD}
-      YANDEX_GEOCODER_KEY: ${YANDEX_GEOCODER_KEY}
-      YANDEX_GEOCODER_BASE_URL: ${YANDEX_GEOCODER_BASE_URL:-https://geocode-maps.yandex.ru/1.x/}
+      TRUMPLIN_ADMIN_EMAIL: admin@example.com
+      TRUMPLIN_ADMIN_PASSWORD: change_me_admin_password
+      YANDEX_GEOCODER_KEY: ${YANDEX_GEOCODER_KEY:-f0e8de45-f741-497b-bf91-92d52a17b41c}
+      YANDEX_GEOCODER_BASE_URL: https://geocode-maps.yandex.ru/1.x/
     ports:
       - "8080:8080"
-    depends_on:
-      postgres:
-        condition: service_healthy
-    restart: on-failure
+    volumes:
+      - trumplin_sqlite_data:/data
 
   frontend:
     build:
       context: ./frontend
       args:
-        NEXT_PUBLIC_API_BASE_URL: http://backend:8080
-        NEXT_PUBLIC_YANDEX_API_KEY: ${YANDEX_JAVASCRIPT_API_KEY}
+        NEXT_PUBLIC_API_BASE_URL: http://localhost:8080
+        NEXT_PUBLIC_YANDEX_API_KEY: ${YANDEX_JAVASCRIPT_API_KEY:-f0e8de45-f741-497b-bf91-92d52a17b41c}
     environment:
-      NEXT_PUBLIC_API_BASE_URL: http://backend:8080
-      NEXT_PUBLIC_YANDEX_API_KEY: ${YANDEX_JAVASCRIPT_API_KEY}
+      NEXT_PUBLIC_API_BASE_URL: http://localhost:8080
+      NEXT_PUBLIC_YANDEX_API_KEY: ${YANDEX_JAVASCRIPT_API_KEY:-f0e8de45-f741-497b-bf91-92d52a17b41c}
     ports:
       - "3000:3000"
     depends_on:
       - backend
 
 volumes:
-  trumplin_pgdata:
+  trumplin_sqlite_data:
+

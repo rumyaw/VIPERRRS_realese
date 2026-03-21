@@ -29,12 +29,12 @@ func EmployerApplicationsList(cfg *config.Config, database *db.Database) http.Ha
 			return
 		}
 
-		rows, err := database.DB.Query(ctx, `
+		rows, err := database.DB.QueryContext(ctx, `
 			SELECT
-				a.id::text,
-				o.id::text,
+				a.id,
+				o.id,
 				o.title,
-				a.applicant_user_id::text,
+				a.applicant_user_id,
 				COALESCE(ap.full_name, u.display_name, '') AS full_name,
 				a.status,
 				a.created_at
@@ -42,7 +42,7 @@ func EmployerApplicationsList(cfg *config.Config, database *db.Database) http.Ha
 			JOIN opportunities o ON o.id=a.opportunity_id
 			JOIN users u ON u.id=a.applicant_user_id
 			LEFT JOIN applicants_profiles ap ON ap.user_id=a.applicant_user_id
-			WHERE o.employer_company_id=$1
+			WHERE o.employer_company_id=?
 			ORDER BY a.created_at DESC
 		`, companyID)
 		if err != nil {
@@ -115,20 +115,20 @@ func EmployerApplicationStatusUpdate(cfg *config.Config, database *db.Database) 
 			return
 		}
 
-		res, err := database.DB.Exec(ctx, `
+		res, err := database.DB.ExecContext(ctx, `
 			UPDATE applications a
-			SET status=$1, updated_at=now()
+			SET status=?, updated_at=CURRENT_TIMESTAMP
 			FROM opportunities o
-			WHERE a.id=$2
+			WHERE a.id=?
 				AND o.id=a.opportunity_id
-				AND o.employer_company_id=$3
+				AND o.employer_company_id=?
 			`, status, applicationId, companyID)
 		if err != nil {
 			http.Error(w, "db_error", http.StatusInternalServerError)
 			return
 		}
 
-		n := res.RowsAffected()
+		n, _ := res.RowsAffected()
 		if n == 0 {
 			http.Error(w, "not_found_or_forbidden", http.StatusNotFound)
 			return

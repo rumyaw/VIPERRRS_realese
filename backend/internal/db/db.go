@@ -2,17 +2,17 @@ package db
 
 import (
 	"context"
+	"database/sql"
 	"time"
-
-	"github.com/jackc/pgx/v5/pgxpool"
+	_ "modernc.org/sqlite"
 )
 
 type Database struct {
-	DB *pgxpool.Pool
+	DB *sql.DB
 }
 
 func New(ctx context.Context, dsn string) (*Database, error) {
-	pool, err := pgxpool.New(ctx, dsn)
+	db, err := sql.Open("sqlite", dsn)
 	if err != nil {
 		return nil, err
 	}
@@ -20,17 +20,18 @@ func New(ctx context.Context, dsn string) (*Database, error) {
 	// Basic connection health check.
 	ctxPing, cancel := context.WithTimeout(ctx, 5*time.Second)
 	defer cancel()
-	if err := pool.Ping(ctxPing); err != nil {
-		pool.Close()
+	if err := db.PingContext(ctxPing); err != nil {
+		db.Close()
 		return nil, err
 	}
 
-	return &Database{DB: pool}, nil
+	return &Database{DB: db}, nil
 }
 
 func (d *Database) Close() {
 	if d == nil || d.DB == nil {
 		return
 	}
-	d.DB.Close()
+	_ = d.DB.Close()
 }
+

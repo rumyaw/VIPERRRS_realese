@@ -57,6 +57,8 @@ func NewRouter(cfg RouterConfig) http.Handler {
 		r.With(auth.RequireRoles("APPLICANT")).Post("/applications", handlers.ApplicantApplicationCreate(cfg.Cfg, cfg.Database))
 		r.With(auth.RequireRoles("APPLICANT")).Get("/contacts", handlers.ApplicantContactsList(cfg.Cfg, cfg.Database))
 		r.With(auth.RequireRoles("APPLICANT")).Post("/contacts", handlers.ApplicantContactsCreate(cfg.Cfg, cfg.Database))
+		r.With(auth.RequireRoles("APPLICANT")).Post("/recommendations", handlers.ApplicantRecommendationCreate(cfg.Cfg, cfg.Database))
+		r.With(auth.RequireRoles("APPLICANT")).Get("/recommendations/inbox", handlers.ApplicantRecommendationInbox(cfg.Cfg, cfg.Database))
 	})
 
 	r.With(auth.AuthMiddleware(cfg.JWTSecret)).Route("/api/curator", func(r chi.Router) {

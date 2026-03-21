@@ -61,8 +61,8 @@ func Load() (*Config, error) {
 			CorsOrigin: getenvStr("TRUMPLIN_CORS_ORIGIN", "http://localhost:3000"),
 		},
 		DB: DBConfig{
-			DSN:            mustEnv("TRUMPLIN_DATABASE_DSN"),
-			MigrationsDir:  "migrations",
+			DSN:            getenvStr("TRUMPLIN_DATABASE_DSN", "file:trumplin.db?_pragma=foreign_keys(1)&_pragma=busy_timeout(5000)"),
+			MigrationsDir:  detectMigrationsDir(),
 		},
 		Auth: AuthConfig{
 			JWTSecret: jwtSecret,
@@ -78,6 +78,21 @@ func Load() (*Config, error) {
 	}
 
 	return cfg, nil
+}
+
+func detectMigrationsDir() string {
+	if v := os.Getenv("TRUMPLIN_MIGRATIONS_DIR"); v != "" {
+		return v
+	}
+	// If started from backend root.
+	if _, err := os.Stat("migrations"); err == nil {
+		return "migrations"
+	}
+	// If started from backend/cmd/server.
+	if _, err := os.Stat("../../migrations"); err == nil {
+		return "../../migrations"
+	}
+	return "migrations"
 }
 
 func getenvInt(key string, def int) int {
