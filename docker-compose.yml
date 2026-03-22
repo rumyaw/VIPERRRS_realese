@@ -1,0 +1,21 @@
+# Локальная разработка: только PostgreSQL (Grafana и остальной стек — позже).
+services:
+  postgres:
+    image: postgres:18-alpine
+    container_name: tramplin-postgres
+    environment:
+      POSTGRES_USER: tramplin
+      POSTGRES_PASSWORD: tramplin
+      POSTGRES_DB: tramplin
+    ports:
+      - "5432:5432"
+    volumes:
+      - tramplin_pg_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U tramplin -d tramplin"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  tramplin_pg_data:

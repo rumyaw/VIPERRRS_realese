@@ -34,7 +34,7 @@ export function AppHeader() {
       <div className="mx-auto flex max-w-6xl items-center justify-between gap-4 px-4 py-3 sm:px-6">
         <Link href="/" className="flex items-center gap-3" onClick={() => setOpen(false)}>
           <motion.div whileHover={{ scale: 1.03 }} className="relative h-10 w-10 shrink-0">
-            <Image src="/logo.png" alt="Трамплин" fill className="object-contain drop-shadow-md" priority />
+            <Image src="/public/images/logo.png" alt="Трамплин" fill className="object-contain drop-shadow-md" priority />
           </motion.div>
           <div className="leading-tight">
             <span className="block text-lg font-bold tracking-tight text-[var(--text-primary)]">

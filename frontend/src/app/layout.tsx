@@ -20,7 +20,7 @@ export const metadata: Metadata = {
   title: "Трамплин — карьерная платформа",
   description:
     "Экосистема для студентов, выпускников и работодателей: вакансии, стажировки, менторство и мероприятия на карте.",
-  icons: { icon: "/logo.png" },
+  icons: { icon: "/public/images/logo.png" },
 };
 
 export const viewport: Viewport = {
