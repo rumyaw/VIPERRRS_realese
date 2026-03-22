@@ -1,68 +1,83 @@
-'use client';
+"use client";
 
-import { FormEvent, useState } from 'react';
-import { useRouter } from 'next/navigation';
-import { apiPost } from '@/lib/api';
+import { motion } from "framer-motion";
+import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { useState } from "react";
+import { useAuth } from "@/contexts/auth-context";
+import { GlassPanel } from "@/components/ui/GlassPanel";
 
 export default function LoginPage() {
+  const { login } = useAuth();
   const router = useRouter();
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
-  const onSubmit = async (e: FormEvent) => {
+  async function onSubmit(e: React.FormEvent) {
     e.preventDefault();
-    setError(null);
     setLoading(true);
-    try {
-      await apiPost('/api/auth/login', { email, password });
-      router.push('/dashboard');
-    } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : 'Ошибка входа');
-    } finally {
-      setLoading(false);
-    }
-  };
+    setError(null);
+    const res = await login(email, password);
+    setLoading(false);
+    if (res.ok) router.push("/dashboard");
+    else setError(res.error ?? "Ошибка входа");
+  }
 
   return (
-    <div className="mx-auto w-full max-w-md px-4 py-10">
-      <h1 className="text-2xl font-semibold text-black dark:text-white">Вход</h1>
-
-      <form onSubmit={onSubmit} className="mt-6 space-y-4 rounded-2xl border border-black/10 bg-white/70 p-4 backdrop-blur dark:border-white/10 dark:bg-black/30">
-        <label className="block">
-          <div className="text-sm font-medium text-black/70 dark:text-white/70">Email</div>
-          <input
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            type="email"
-            required
-            className="mt-1 h-11 w-full rounded-xl border border-black/10 bg-white/60 px-4 text-sm outline-none dark:border-white/15 dark:bg-black/25 dark:text-white"
-          />
-        </label>
-
-        <label className="block">
-          <div className="text-sm font-medium text-black/70 dark:text-white/70">Пароль</div>
-          <input
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            type="password"
-            required
-            className="mt-1 h-11 w-full rounded-xl border border-black/10 bg-white/60 px-4 text-sm outline-none dark:border-white/15 dark:bg-black/25 dark:text-white"
-          />
-        </label>
-
-        {error ? <div className="text-sm font-medium text-rose-600">{error}</div> : null}
-
-        <button
-          disabled={loading}
-          type="submit"
-          className="h-11 w-full rounded-xl bg-indigo-600 px-4 text-sm font-semibold text-white transition hover:bg-indigo-500 disabled:opacity-60"
-        >
-          {loading ? 'Вход…' : 'Войти'}
-        </button>
-      </form>
-    </div>
+    <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} className="mx-auto max-w-md">
+      <GlassPanel className="p-6 sm:p-8">
+        <h1 className="text-2xl font-bold text-[var(--text-primary)]">Вход</h1>
+        <p className="mt-2 text-sm text-[var(--text-secondary)]">
+          Демо: <code className="text-xs">student@example.com</code> (соискатель),{" "}
+          <code className="text-xs">hr@codeinsight.example</code> (работодатель),{" "}
+          <code className="text-xs">admin@tramplin.example</code> (админ; ранее{" "}
+          <code className="text-xs">curator@university.example</code>) — пароль от 4 символов.
+        </p>
+        <form onSubmit={onSubmit} className="mt-6 space-y-4">
+          <div>
+            <label className="text-xs font-medium text-[var(--text-secondary)]">Email</label>
+            <input
+              type="email"
+              required
+              autoComplete="email"
+              className="glass-input mt-1 w-full px-4 py-3 text-sm outline-none ring-[var(--brand-cyan)] focus:ring-2"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+            />
+          </div>
+          <div>
+            <label className="text-xs font-medium text-[var(--text-secondary)]">Пароль</label>
+            <input
+              type="password"
+              required
+              autoComplete="current-password"
+              className="glass-input mt-1 w-full px-4 py-3 text-sm outline-none ring-[var(--brand-cyan)] focus:ring-2"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+            />
+          </div>
+          {error && (
+            <p className="rounded-xl border border-red-500/40 bg-red-500/10 px-3 py-2 text-sm text-red-200">
+              {error}
+            </p>
+          )}
+          <button
+            type="submit"
+            disabled={loading}
+            className="w-full rounded-xl bg-[linear-gradient(135deg,var(--brand-magenta),var(--brand-orange))] py-3 text-sm font-semibold text-white shadow-lg transition hover:opacity-95 disabled:opacity-60"
+          >
+            {loading ? "Входим…" : "Войти"}
+          </button>
+        </form>
+        <p className="mt-6 text-center text-sm text-[var(--text-secondary)]">
+          Нет аккаунта?{" "}
+          <Link href="/register" className="font-medium text-[var(--brand-cyan)] hover:underline">
+            Регистрация
+          </Link>
+        </p>
+      </GlassPanel>
+    </motion.div>
   );
 }
-

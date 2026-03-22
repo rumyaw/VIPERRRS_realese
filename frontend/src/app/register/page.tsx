@@ -1,132 +1,123 @@
-'use client';
+"use client";
 
-import { FormEvent, useState } from 'react';
-import { useRouter } from 'next/navigation';
-import { apiPost } from '@/lib/api';
-
-type Role = 'EMPLOYER' | 'APPLICANT';
+import { motion } from "framer-motion";
+import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { useState } from "react";
+import { useAuth } from "@/contexts/auth-context";
+import type { UserRole } from "@/lib/types";
+import { GlassPanel } from "@/components/ui/GlassPanel";
+import { cn } from "@/lib/cn";
 
 export default function RegisterPage() {
+  const { register } = useAuth();
   const router = useRouter();
-  const [role, setRole] = useState<Role>('APPLICANT');
-
-  const [email, setEmail] = useState('');
-  const [displayName, setDisplayName] = useState('');
-  const [password, setPassword] = useState('');
-
-  const [companyName, setCompanyName] = useState('');
-  const [fullName, setFullName] = useState('');
-
+  const [displayName, setDisplayName] = useState("");
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [role, setRole] = useState<Extract<UserRole, "applicant" | "employer">>("applicant");
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
-  const onSubmit = async (e: FormEvent) => {
+  async function onSubmit(e: React.FormEvent) {
     e.preventDefault();
-    setError(null);
     setLoading(true);
-    try {
-      const body = {
-        email,
-        password,
-        displayName,
-        role,
-        ...(role === 'EMPLOYER' ? { companyName } : { fullName }),
-      };
-
-      await apiPost('/api/auth/register', body);
-      router.push('/dashboard');
-    } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : 'Ошибка регистрации');
-    } finally {
-      setLoading(false);
-    }
-  };
+    setError(null);
+    const res = await register({ email, displayName, password, role });
+    setLoading(false);
+    if (res.ok) router.push("/dashboard");
+    else setError(res.error ?? "Ошибка регистрации");
+  }
 
   return (
-    <div className="mx-auto w-full max-w-md px-4 py-10">
-      <h1 className="text-2xl font-semibold text-black dark:text-white">Регистрация</h1>
-
-      <form
-        onSubmit={onSubmit}
-        className="mt-6 space-y-4 rounded-2xl border border-black/10 bg-white/70 p-4 backdrop-blur dark:border-white/10 dark:bg-black/30"
-      >
-        <label className="block">
-          <div className="text-sm font-medium text-black/70 dark:text-white/70">Роль</div>
-          <select
-            value={role}
-            onChange={(e) => setRole(e.target.value as Role)}
-            className="mt-1 h-11 w-full rounded-xl border border-black/10 bg-white/60 px-4 text-sm outline-none dark:border-white/15 dark:bg-black/25 dark:text-white"
+    <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} className="mx-auto max-w-md">
+      <GlassPanel className="p-6 sm:p-8">
+        <h1 className="text-2xl font-bold text-[var(--text-primary)]">Регистрация</h1>
+        <p className="mt-2 text-sm text-[var(--text-secondary)]">
+          Выберите роль: соискатель или работодатель. Учётная запись администратора и кураторов
+          платформы создаётся отдельно (не через публичную регистрацию).
+        </p>
+        <form onSubmit={onSubmit} className="mt-6 space-y-4">
+          <div className="grid grid-cols-2 gap-2">
+            {(
+              [
+                ["applicant", "Соискатель"],
+                ["employer", "Работодатель"],
+              ] as const
+            ).map(([value, label]) => (
+              <button
+                key={value}
+                type="button"
+                onClick={() => setRole(value)}
+                className={cn(
+                  "rounded-xl border px-3 py-3 text-sm font-medium transition",
+                  role === value
+                    ? "border-[var(--brand-orange)] bg-[var(--glass-bg-strong)] text-[var(--text-primary)]"
+                    : "border-[var(--glass-border)] text-[var(--text-secondary)] hover:bg-[var(--glass-bg)]",
+                )}
+              >
+                {label}
+              </button>
+            ))}
+          </div>
+          <div>
+            <label className="text-xs font-medium text-[var(--text-secondary)]">Отображаемое имя</label>
+            <input
+              required
+              className="glass-input mt-1 w-full px-4 py-3 text-sm outline-none ring-[var(--brand-cyan)] focus:ring-2"
+              value={displayName}
+              onChange={(e) => setDisplayName(e.target.value)}
+            />
+          </div>
+          <div>
+            <label className="text-xs font-medium text-[var(--text-secondary)]">Email</label>
+            <input
+              type="email"
+              required
+              autoComplete="email"
+              className="glass-input mt-1 w-full px-4 py-3 text-sm outline-none ring-[var(--brand-cyan)] focus:ring-2"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+            />
+          </div>
+          <div>
+            <label className="text-xs font-medium text-[var(--text-secondary)]">Пароль (мин. 6)</label>
+            <input
+              type="password"
+              required
+              minLength={6}
+              autoComplete="new-password"
+              className="glass-input mt-1 w-full px-4 py-3 text-sm outline-none ring-[var(--brand-cyan)] focus:ring-2"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+            />
+          </div>
+          {role === "employer" && (
+            <p className="rounded-xl border border-[var(--glass-border)] bg-[var(--glass-bg)] px-3 py-2 text-xs text-[var(--text-secondary)]">
+              После регистрации работодатель проходит верификацию (ИНН / корпоративная почта /
+              профильные сети) — в демо статус можно изменить в кабинете куратора.
+            </p>
+          )}
+          {error && (
+            <p className="rounded-xl border border-red-500/40 bg-red-500/10 px-3 py-2 text-sm text-red-200">
+              {error}
+            </p>
+          )}
+          <button
+            type="submit"
+            disabled={loading}
+            className="w-full rounded-xl bg-[linear-gradient(135deg,var(--brand-magenta),var(--brand-orange))] py-3 text-sm font-semibold text-white shadow-lg transition hover:opacity-95 disabled:opacity-60"
           >
-            <option value="APPLICANT">Соискатель</option>
-            <option value="EMPLOYER">Работодатель</option>
-          </select>
-        </label>
-
-        <label className="block">
-          <div className="text-sm font-medium text-black/70 dark:text-white/70">Email</div>
-          <input
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            type="email"
-            required
-            className="mt-1 h-11 w-full rounded-xl border border-black/10 bg-white/60 px-4 text-sm outline-none dark:border-white/15 dark:bg-black/25 dark:text-white"
-          />
-        </label>
-
-        <label className="block">
-          <div className="text-sm font-medium text-black/70 dark:text-white/70">Имя</div>
-          <input
-            value={displayName}
-            onChange={(e) => setDisplayName(e.target.value)}
-            required
-            className="mt-1 h-11 w-full rounded-xl border border-black/10 bg-white/60 px-4 text-sm outline-none dark:border-white/15 dark:bg-black/25 dark:text-white"
-          />
-        </label>
-
-        {role === 'EMPLOYER' ? (
-          <label className="block">
-            <div className="text-sm font-medium text-black/70 dark:text-white/70">Название компании</div>
-            <input
-              value={companyName}
-              onChange={(e) => setCompanyName(e.target.value)}
-              required
-              className="mt-1 h-11 w-full rounded-xl border border-black/10 bg-white/60 px-4 text-sm outline-none dark:border-white/15 dark:bg-black/25 dark:text-white"
-            />
-          </label>
-        ) : (
-          <label className="block">
-            <div className="text-sm font-medium text-black/70 dark:text-white/70">ФИО</div>
-            <input
-              value={fullName}
-              onChange={(e) => setFullName(e.target.value)}
-              required
-              className="mt-1 h-11 w-full rounded-xl border border-black/10 bg-white/60 px-4 text-sm outline-none dark:border-white/15 dark:bg-black/25 dark:text-white"
-            />
-          </label>
-        )}
-
-        <label className="block">
-          <div className="text-sm font-medium text-black/70 dark:text-white/70">Пароль</div>
-          <input
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            type="password"
-            required
-            className="mt-1 h-11 w-full rounded-xl border border-black/10 bg-white/60 px-4 text-sm outline-none dark:border-white/15 dark:bg-black/25 dark:text-white"
-          />
-        </label>
-
-        {error ? <div className="text-sm font-medium text-rose-600">{error}</div> : null}
-
-        <button
-          disabled={loading}
-          type="submit"
-          className="h-11 w-full rounded-xl bg-indigo-600 px-4 text-sm font-semibold text-white transition hover:bg-indigo-500 disabled:opacity-60"
-        >
-          {loading ? 'Создание…' : 'Зарегистрироваться'}
-        </button>
-      </form>
-    </div>
+            {loading ? "Создаём…" : "Создать аккаунт"}
+          </button>
+        </form>
+        <p className="mt-6 text-center text-sm text-[var(--text-secondary)]">
+          Уже есть аккаунт?{" "}
+          <Link href="/login" className="font-medium text-[var(--brand-cyan)] hover:underline">
+            Войти
+          </Link>
+        </p>
+      </GlassPanel>
+    </motion.div>
   );
 }
-

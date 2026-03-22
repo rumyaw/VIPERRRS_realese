@@ -1,0 +1,251 @@
+import type {
+  ApplicationRecord,
+  AuthUser,
+  ContactEdge,
+  ModerationItem,
+  Opportunity,
+  Recommendation,
+} from "./types";
+
+export const MOCK_OPPORTUNITIES: Opportunity[] = [
+  {
+    id: "opp-1",
+    title: "Стажировка Go + PostgreSQL",
+    shortDescription: "Бэкенд-команда продукта «Трамплин». Микросервисы, SQL, code review.",
+    fullDescription:
+      "Вы присоединитесь к команде платформы карьеры: REST/JSON API, миграции БД, тесты, CI. Менторство от senior-разработчиков, участие в проектировании фич.",
+    companyName: "КодИнсайт",
+    companyId: "co-1",
+    type: "internship",
+    workFormat: "hybrid",
+    locationLabel: "Москва, Пресненская наб.",
+    coords: [37.5392, 55.7494],
+    publishedAt: "2026-03-01",
+    validUntil: "2026-06-01",
+    eventDate: null,
+    salaryMin: 60000,
+    salaryMax: 90000,
+    currency: "RUB",
+    contacts: {
+      email: "talent@codeinsight.example",
+      website: "https://codeinsight.example",
+      telegram: "@codeinsight_hr",
+    },
+    tags: ["Go", "PostgreSQL", "Docker", "REST"],
+    level: "intern",
+    employment: "full",
+    mediaUrl: "https://images.unsplash.com/photo-1517694712202-14dd9538aa97?w=800&q=80",
+  },
+  {
+    id: "opp-2",
+    title: "Junior Frontend (Next.js)",
+    shortDescription: "SSR, дизайн-система, доступность. Продуктовая команда.",
+    fullDescription:
+      "Разработка клиентской части карьерных сервисов: App Router, Tailwind, Storybook, e2e-тесты. Работа с дизайнерами в Figma.",
+    companyName: "НебоТех",
+    companyId: "co-2",
+    type: "vacancy_junior",
+    workFormat: "remote",
+    locationLabel: "Санкт-Петербург (компания)",
+    coords: [30.3141, 59.9386],
+    publishedAt: "2026-02-20",
+    validUntil: "2026-05-01",
+    eventDate: null,
+    salaryMin: 120000,
+    salaryMax: 180000,
+    currency: "RUB",
+    contacts: { email: "jobs@nebosky.example" },
+    tags: ["Next.js", "TypeScript", "React", "a11y"],
+    level: "junior",
+    employment: "full",
+  },
+  {
+    id: "opp-3",
+    title: "Менторство по системному дизайну",
+    shortDescription: "Парные сессии 1:1, разбор архитектуры высоконагруженных систем.",
+    fullDescription:
+      "Программа для выпускников: проектирование API, кэширование, очереди, наблюдаемость. 8 встреч по 60 минут.",
+    companyName: "ИТ-кампус",
+    companyId: "co-3",
+    type: "mentorship",
+    workFormat: "office",
+    locationLabel: "Москва, Сколково",
+    coords: [37.4728, 55.6953],
+    publishedAt: "2026-03-10",
+    validUntil: "2026-04-15",
+    eventDate: null,
+    salaryMin: null,
+    salaryMax: null,
+    currency: "RUB",
+    contacts: { email: "mentors@itcampus.example" },
+    tags: ["System Design", "Highload", "Mentoring"],
+    level: "middle",
+    employment: "project",
+  },
+  {
+    id: "opp-4",
+    title: "День карьеры: AI & Data",
+    shortDescription: "Лекции компаний, стенды работодателей, нетворкинг.",
+    fullDescription:
+      "Очное мероприятие для студентов 3–4 курсов. Регистрация на сайте, кофе-брейки, розыгрыш мерча.",
+    companyName: "Консорциум вузов",
+    companyId: "co-4",
+    type: "event",
+    workFormat: "office",
+    locationLabel: "Москва, Гостиный двор",
+    coords: [37.6212, 55.7539],
+    publishedAt: "2026-03-12",
+    validUntil: null,
+    eventDate: "2026-04-20T10:00:00",
+    salaryMin: null,
+    salaryMax: null,
+    currency: "RUB",
+    contacts: { website: "https://career-day.example" },
+    tags: ["Networking", "Career", "AI"],
+    level: "intern",
+    employment: "part",
+  },
+  {
+    id: "opp-5",
+    title: "Middle Backend (Python)",
+    shortDescription: "Высоконагруженные сервисы, async, PostgreSQL.",
+    fullDescription: "Команда платежей: Python 3.12, FastAPI, Kafka, observability stack.",
+    companyName: "ФинПоток",
+    companyId: "co-5",
+    type: "vacancy_senior",
+    workFormat: "hybrid",
+    locationLabel: "Казань, IT-парк",
+    coords: [49.1064, 55.7963],
+    publishedAt: "2026-03-15",
+    validUntil: "2026-07-01",
+    eventDate: null,
+    salaryMin: 220000,
+    salaryMax: 320000,
+    currency: "RUB",
+    contacts: { email: "hr@finflow.example", phone: "+7 800 000-00-00" },
+    tags: ["Python", "FastAPI", "PostgreSQL", "Kafka"],
+    level: "middle",
+    employment: "full",
+  },
+];
+
+export const MOCK_USERS: Record<string, AuthUser> = {
+  "user-applicant": {
+    id: "user-applicant",
+    email: "student@example.com",
+    displayName: "Алексей Соискатель",
+    role: "applicant",
+    applicant: {
+      fullName: "Сидоров Алексей Игоревич",
+      university: "МГТУ им. Баумана",
+      courseOrYear: "4 курс / 2026",
+      skills: ["Go", "PostgreSQL", "React"],
+      bio: "Интересуюсь бэкендом и распределёнными системами.",
+      repoLinks: ["https://github.com/example/backend-labs"],
+      avatarDataUrl: null,
+      jobSearchStatus: "active_search",
+      resume: {
+        headline: "Backend-разработчик (студент)",
+        summary:
+          "Пишу на Go, интересуюсь PostgreSQL и микросервисами. Ищу стажировку или junior-позицию.",
+        experience: "2024–2026 — учебные проекты: REST API, Docker, CI.",
+        education: "МГТУ им. Баумана, ИУ, 4 курс.",
+        languages: "Русский — родной, English — B2.",
+        certifications: "",
+      },
+      privacy: {
+        hideApplicationsFromPeers: false,
+        openProfileToNetwork: true,
+      },
+    },
+  },
+  "user-employer": {
+    id: "user-employer",
+    email: "hr@codeinsight.example",
+    displayName: "HR КодИнсайт",
+    role: "employer",
+    employer: {
+      companyName: "КодИнсайт",
+      description: "Цифровые экосистемы для образования и бизнеса.",
+      industry: "IT / EdTech",
+      website: "https://codeinsight.example",
+      socials: "https://linkedin.com/company/codeinsight",
+      inn: "7701234567",
+      verified: true,
+      logoDataUrl: null,
+    },
+  },
+  "user-admin": {
+    id: "user-admin",
+    email: "admin@tramplin.example",
+    displayName: "Администратор платформы",
+    role: "admin",
+  },
+};
+
+export const MOCK_APPLICATIONS: ApplicationRecord[] = [
+  {
+    id: "app-1",
+    opportunityId: "opp-1",
+    applicantId: "user-applicant",
+    status: "pending",
+    createdAt: "2026-03-18T12:00:00",
+    resumeSnapshot:
+      "Сидоров Алексей · Go, PostgreSQL · Стажировка: бэкенд, интерес к микросервисам. См. полное резюме в профиле.",
+  },
+];
+
+export const MOCK_CONTACTS: ContactEdge[] = [
+  { peerId: "peer-maria", since: "2026-02-01" },
+];
+
+export const MOCK_PEER_NAMES: Record<string, string> = {
+  "peer-maria": "Мария Выпускникова",
+};
+
+export const MOCK_RECOMMENDATIONS: Recommendation[] = [
+  {
+    id: "rec-1",
+    fromUserId: "peer-maria",
+    toUserId: "user-applicant",
+    opportunityId: "opp-2",
+    message: "Посмотри вакансию во Frontend — как раз стек из ТЗ.",
+    createdAt: "2026-03-19T09:30:00",
+  },
+];
+
+export const MOCK_MODERATION: ModerationItem[] = [
+  {
+    id: "mod-1",
+    kind: "employer_verify",
+    title: "Верификация: ООО «СтартапЛаб», ИНН 7701987654",
+    status: "open",
+    createdAt: "2026-03-20",
+  },
+  {
+    id: "mod-2",
+    kind: "opportunity",
+    title: "Карточка «Тестовая вакансия» — жалоба на контакты",
+    status: "open",
+    createdAt: "2026-03-19",
+  },
+];
+
+export const TAG_PRESETS = [
+  "Go",
+  "Python",
+  "Java",
+  "SQL",
+  "PostgreSQL",
+  "React",
+  "Next.js",
+  "TypeScript",
+  "Docker",
+  "Kubernetes",
+  "Kafka",
+  "Junior",
+  "Middle",
+  "Senior",
+  "Стажировка",
+  "Удалённо",
+];
