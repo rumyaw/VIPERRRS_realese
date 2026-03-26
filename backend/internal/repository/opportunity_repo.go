@@ -150,7 +150,7 @@ INSERT INTO opportunities (
 ) VALUES (
   $1, $2, $3, $4, $5,
   $6::opportunity_type, $7::work_format, $8, $9, $10, $11::jsonb, $12::text[], $13, $14::employment_type,
-  $15, $16, $17, $18, 'pending'
+  $15, $16, $17, $18, 'approved'
 )
 RETURNING id, author_id, title, short_description, full_description, company_name,
           type::text, work_format::text, location_label, lon, lat,

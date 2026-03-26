@@ -71,6 +71,7 @@ func (h *Cabinet) ApplicantCreateApplication(w http.ResponseWriter, r *http.Requ
 type privacyBody struct {
 	HideApplicationsFromPeers bool `json:"hideApplicationsFromPeers"`
 	OpenProfileToNetwork      bool `json:"openProfileToNetwork"`
+	BlockRecommendations      bool `json:"blockRecommendations"`
 }
 
 type applicantProfileBody struct {
@@ -142,7 +143,7 @@ func (h *Cabinet) ApplicantPrivacy(w http.ResponseWriter, r *http.Request) {
 		respond.Error(w, http.StatusBadRequest, "invalid json")
 		return
 	}
-	if err := h.Users.UpdateApplicantPrivacy(r.Context(), userID, body.HideApplicationsFromPeers, body.OpenProfileToNetwork); err != nil {
+	if err := h.Users.UpdateApplicantPrivacyV2(r.Context(), userID, body.HideApplicationsFromPeers, body.OpenProfileToNetwork, body.BlockRecommendations); err != nil {
 		respond.Error(w, http.StatusInternalServerError, "failed to update privacy")
 		return
 	}
@@ -160,19 +161,26 @@ func (h *Cabinet) ApplicantContacts(w http.ResponseWriter, r *http.Request) {
 		respond.Error(w, http.StatusBadRequest, "invalid user id")
 		return
 	}
-	items, err := h.Users.ListContacts(r.Context(), userID)
+	items, err := h.Users.ListContactsV2(r.Context(), userID)
 	if err != nil {
 		respond.Error(w, http.StatusInternalServerError, "failed to list contacts")
 		return
 	}
 	out := make([]map[string]any, 0, len(items))
 	for _, it := range items {
-		out = append(out, map[string]any{
-			"peerId": it.PeerID.String(),
-			"email":  it.Email,
-			"name":   it.Name,
-			"since":  it.Connected,
-		})
+		m := map[string]any{
+			"peerId":    it.PeerID.String(),
+			"email":     it.Email,
+			"name":      it.Name,
+			"since":     it.Connected,
+			"skills":    it.Skills,
+			"bio":       it.Bio,
+			"jobSearch": it.JobSearch,
+		}
+		if it.AvatarURL != nil {
+			m["avatarUrl"] = *it.AvatarURL
+		}
+		out = append(out, m)
 	}
 	respond.JSON(w, http.StatusOK, map[string]any{"items": out})
 }
@@ -240,8 +248,8 @@ func (h *Cabinet) ApplicantRecommend(w http.ResponseWriter, r *http.Request) {
 		respond.Error(w, http.StatusBadRequest, "invalid opportunityId")
 		return
 	}
-	if err := h.Users.CreateRecommendation(r.Context(), fromUserID, toUserID, oppID, body.Message); err != nil {
-		respond.Error(w, http.StatusBadRequest, "failed to create recommendation")
+	if err := h.Users.CreateRecommendationChecked(r.Context(), fromUserID, toUserID, oppID, body.Message); err != nil {
+		respond.Error(w, http.StatusBadRequest, err.Error())
 		return
 	}
 	respond.JSON(w, http.StatusCreated, map[string]any{"ok": true})
@@ -275,6 +283,7 @@ func (h *Cabinet) ApplicantRecommendationsInbox(w http.ResponseWriter, r *http.R
 			"opportunityTitle": it.OpportunityTitle,
 			"companyName":      it.CompanyName,
 			"locationLabel":    it.LocationLabel,
+			"viewed":           it.Viewed,
 		})
 	}
 	respond.JSON(w, http.StatusOK, map[string]any{"items": out})
@@ -521,6 +530,383 @@ func (h *Cabinet) CuratorPendingOpportunities(w http.ResponseWriter, r *http.Req
 
 type moderationBody struct {
 	Status string `json:"status"`
+}
+
+// --- Contact Requests ---
+
+func (h *Cabinet) ApplicantSendContactRequest(w http.ResponseWriter, r *http.Request) {
+	uid, _ := r.Context().Value(middleware.UserIDKey).(string)
+	userID, err := uuid.Parse(uid)
+	if err != nil {
+		respond.Error(w, http.StatusBadRequest, "invalid user id")
+		return
+	}
+	var body struct {
+		ToUserID string `json:"toUserId"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+		respond.Error(w, http.StatusBadRequest, "invalid json")
+		return
+	}
+	toUserID, err := uuid.Parse(body.ToUserID)
+	if err != nil {
+		respond.Error(w, http.StatusBadRequest, "invalid toUserId")
+		return
+	}
+	if err := h.Users.SendContactRequest(r.Context(), userID, toUserID); err != nil {
+		respond.Error(w, http.StatusBadRequest, err.Error())
+		return
+	}
+	respond.JSON(w, http.StatusCreated, map[string]any{"ok": true})
+}
+
+func (h *Cabinet) ApplicantContactRequests(w http.ResponseWriter, r *http.Request) {
+	uid, _ := r.Context().Value(middleware.UserIDKey).(string)
+	userID, err := uuid.Parse(uid)
+	if err != nil {
+		respond.Error(w, http.StatusBadRequest, "invalid user id")
+		return
+	}
+	items, err := h.Users.ListIncomingContactRequests(r.Context(), userID)
+	if err != nil {
+		respond.Error(w, http.StatusInternalServerError, "failed to list requests")
+		return
+	}
+	out := make([]map[string]any, 0, len(items))
+	for _, it := range items {
+		m := map[string]any{
+			"id":        it.ID.String(),
+			"fromUserId": it.FromUserID.String(),
+			"fromName":  it.FromName,
+			"fromEmail": it.FromEmail,
+			"skills":    it.Skills,
+			"bio":       it.Bio,
+			"status":    it.Status,
+			"createdAt": it.CreatedAt,
+		}
+		if it.AvatarURL != nil {
+			m["avatarUrl"] = *it.AvatarURL
+		}
+		out = append(out, m)
+	}
+	respond.JSON(w, http.StatusOK, map[string]any{"items": out})
+}
+
+func (h *Cabinet) ApplicantAcceptContactRequest(w http.ResponseWriter, r *http.Request) {
+	uid, _ := r.Context().Value(middleware.UserIDKey).(string)
+	userID, err := uuid.Parse(uid)
+	if err != nil {
+		respond.Error(w, http.StatusBadRequest, "invalid user id")
+		return
+	}
+	requestID, err := uuid.Parse(chi.URLParam(r, "requestId"))
+	if err != nil {
+		respond.Error(w, http.StatusBadRequest, "invalid request id")
+		return
+	}
+	if err := h.Users.AcceptContactRequest(r.Context(), userID, requestID); err != nil {
+		respond.Error(w, http.StatusBadRequest, err.Error())
+		return
+	}
+	respond.JSON(w, http.StatusOK, map[string]any{"ok": true})
+}
+
+func (h *Cabinet) ApplicantRejectContactRequest(w http.ResponseWriter, r *http.Request) {
+	uid, _ := r.Context().Value(middleware.UserIDKey).(string)
+	userID, err := uuid.Parse(uid)
+	if err != nil {
+		respond.Error(w, http.StatusBadRequest, "invalid user id")
+		return
+	}
+	requestID, err := uuid.Parse(chi.URLParam(r, "requestId"))
+	if err != nil {
+		respond.Error(w, http.StatusBadRequest, "invalid request id")
+		return
+	}
+	if err := h.Users.RejectContactRequest(r.Context(), userID, requestID); err != nil {
+		respond.Error(w, http.StatusBadRequest, err.Error())
+		return
+	}
+	respond.JSON(w, http.StatusOK, map[string]any{"ok": true})
+}
+
+// --- Search ---
+
+func (h *Cabinet) ApplicantSearch(w http.ResponseWriter, r *http.Request) {
+	uid, _ := r.Context().Value(middleware.UserIDKey).(string)
+	userID, err := uuid.Parse(uid)
+	if err != nil {
+		respond.Error(w, http.StatusBadRequest, "invalid user id")
+		return
+	}
+	q := r.URL.Query().Get("q")
+	if q == "" {
+		respond.JSON(w, http.StatusOK, map[string]any{"items": []any{}})
+		return
+	}
+	items, err := h.Users.SearchApplicants(r.Context(), q, userID)
+	if err != nil {
+		respond.Error(w, http.StatusInternalServerError, "failed to search")
+		return
+	}
+	out := make([]map[string]any, 0, len(items))
+	for _, it := range items {
+		isContact, _ := h.Users.IsContact(r.Context(), userID, it.UserID)
+		hasPending, _ := h.Users.HasPendingRequest(r.Context(), userID, it.UserID)
+		m := map[string]any{
+			"userId":     it.UserID.String(),
+			"email":      it.Email,
+			"name":       it.Name,
+			"skills":     it.Skills,
+			"bio":        it.Bio,
+			"isContact":  isContact,
+			"hasPending": hasPending,
+		}
+		if it.AvatarURL != nil {
+			m["avatarUrl"] = *it.AvatarURL
+		}
+		out = append(out, m)
+	}
+	respond.JSON(w, http.StatusOK, map[string]any{"items": out})
+}
+
+// --- Public Profile ---
+
+func (h *Cabinet) ApplicantPublicProfile(w http.ResponseWriter, r *http.Request) {
+	uid, _ := r.Context().Value(middleware.UserIDKey).(string)
+	viewerID, err := uuid.Parse(uid)
+	if err != nil {
+		respond.Error(w, http.StatusBadRequest, "invalid user id")
+		return
+	}
+	targetID, err := uuid.Parse(chi.URLParam(r, "userId"))
+	if err != nil {
+		respond.Error(w, http.StatusBadRequest, "invalid target user id")
+		return
+	}
+	profile, err := h.Users.GetPublicProfile(r.Context(), targetID, viewerID)
+	if err != nil {
+		respond.Error(w, http.StatusInternalServerError, "failed to load profile")
+		return
+	}
+	if profile == nil {
+		respond.Error(w, http.StatusNotFound, "user not found")
+		return
+	}
+
+	openProfile, _ := profile.Privacy["openProfileToNetwork"].(bool)
+	isContact, _ := h.Users.IsContact(r.Context(), viewerID, targetID)
+	hasPending, _ := h.Users.HasPendingRequest(r.Context(), viewerID, targetID)
+
+	result := map[string]any{
+		"userId":          profile.UserID.String(),
+		"email":           profile.Email,
+		"displayName":     profile.DisplayName,
+		"fullName":        profile.FullName,
+		"bio":             profile.Bio,
+		"skills":          profile.Skills,
+		"jobSearchStatus": profile.JobSearchStatus,
+		"isContact":       isContact,
+		"hasPending":      hasPending,
+		"openProfile":     openProfile,
+	}
+	if profile.AvatarURL != nil {
+		result["avatarUrl"] = *profile.AvatarURL
+	}
+
+	if openProfile {
+		result["university"] = profile.University
+		result["courseOrYear"] = profile.CourseOrYear
+		result["repoLinks"] = profile.RepoLinks
+		result["resume"] = profile.Resume
+		result["contacts"] = func() []map[string]any {
+			out := make([]map[string]any, 0, len(profile.Contacts))
+			for _, c := range profile.Contacts {
+				out = append(out, map[string]any{"peerId": c.PeerID.String(), "name": c.Name})
+			}
+			return out
+		}()
+		if profile.Applications != nil {
+			apps := make([]map[string]any, 0, len(profile.Applications))
+			for _, a := range profile.Applications {
+				apps = append(apps, map[string]any{
+					"opportunityId":    a.OpportunityID.String(),
+					"opportunityTitle": a.OpportunityTitle,
+					"companyName":      a.CompanyName,
+					"status":           a.Status,
+					"createdAt":        a.CreatedAt,
+				})
+			}
+			result["applications"] = apps
+		}
+	}
+
+	respond.JSON(w, http.StatusOK, result)
+}
+
+// --- Mark recommendation viewed ---
+
+func (h *Cabinet) ApplicantMarkRecommendationViewed(w http.ResponseWriter, r *http.Request) {
+	uid, _ := r.Context().Value(middleware.UserIDKey).(string)
+	userID, err := uuid.Parse(uid)
+	if err != nil {
+		respond.Error(w, http.StatusBadRequest, "invalid user id")
+		return
+	}
+	recID, err := uuid.Parse(chi.URLParam(r, "recommendationId"))
+	if err != nil {
+		respond.Error(w, http.StatusBadRequest, "invalid recommendation id")
+		return
+	}
+	if err := h.Users.MarkRecommendationViewed(r.Context(), userID, recID); err != nil {
+		respond.Error(w, http.StatusBadRequest, err.Error())
+		return
+	}
+	respond.JSON(w, http.StatusOK, map[string]any{"ok": true})
+}
+
+// --- Favorites ---
+
+func (h *Cabinet) ApplicantAddFavorite(w http.ResponseWriter, r *http.Request) {
+	uid, _ := r.Context().Value(middleware.UserIDKey).(string)
+	userID, err := uuid.Parse(uid)
+	if err != nil {
+		respond.Error(w, http.StatusBadRequest, "invalid user id")
+		return
+	}
+	var body struct {
+		OpportunityID string `json:"opportunityId"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+		respond.Error(w, http.StatusBadRequest, "invalid json")
+		return
+	}
+	oppID, err := uuid.Parse(body.OpportunityID)
+	if err != nil {
+		respond.Error(w, http.StatusBadRequest, "invalid opportunity id")
+		return
+	}
+	if err := h.Users.AddFavorite(r.Context(), userID, oppID); err != nil {
+		respond.Error(w, http.StatusInternalServerError, "failed to add favorite")
+		return
+	}
+	respond.JSON(w, http.StatusCreated, map[string]any{"ok": true})
+}
+
+func (h *Cabinet) ApplicantRemoveFavorite(w http.ResponseWriter, r *http.Request) {
+	uid, _ := r.Context().Value(middleware.UserIDKey).(string)
+	userID, err := uuid.Parse(uid)
+	if err != nil {
+		respond.Error(w, http.StatusBadRequest, "invalid user id")
+		return
+	}
+	oppID, err := uuid.Parse(chi.URLParam(r, "opportunityId"))
+	if err != nil {
+		respond.Error(w, http.StatusBadRequest, "invalid opportunity id")
+		return
+	}
+	if err := h.Users.RemoveFavorite(r.Context(), userID, oppID); err != nil {
+		respond.Error(w, http.StatusInternalServerError, "failed to remove favorite")
+		return
+	}
+	respond.JSON(w, http.StatusOK, map[string]any{"ok": true})
+}
+
+func (h *Cabinet) ApplicantFavorites(w http.ResponseWriter, r *http.Request) {
+	uid, _ := r.Context().Value(middleware.UserIDKey).(string)
+	userID, err := uuid.Parse(uid)
+	if err != nil {
+		respond.Error(w, http.StatusBadRequest, "invalid user id")
+		return
+	}
+	ids, err := h.Users.ListFavoriteIDs(r.Context(), userID)
+	if err != nil {
+		respond.Error(w, http.StatusInternalServerError, "failed to list favorites")
+		return
+	}
+	out := make([]string, 0, len(ids))
+	for _, id := range ids {
+		out = append(out, id.String())
+	}
+	respond.JSON(w, http.StatusOK, map[string]any{"items": out})
+}
+
+// --- Recommendable contacts ---
+
+func (h *Cabinet) ApplicantRecommendableContacts(w http.ResponseWriter, r *http.Request) {
+	uid, _ := r.Context().Value(middleware.UserIDKey).(string)
+	userID, err := uuid.Parse(uid)
+	if err != nil {
+		respond.Error(w, http.StatusBadRequest, "invalid user id")
+		return
+	}
+	items, err := h.Users.ListRecommendableContacts(r.Context(), userID)
+	if err != nil {
+		respond.Error(w, http.StatusInternalServerError, "failed to list contacts")
+		return
+	}
+	out := make([]map[string]any, 0, len(items))
+	for _, it := range items {
+		m := map[string]any{
+			"peerId":    it.PeerID.String(),
+			"name":      it.Name,
+			"skills":    it.Skills,
+			"bio":       it.Bio,
+			"jobSearch": it.JobSearch,
+		}
+		if it.AvatarURL != nil {
+			m["avatarUrl"] = *it.AvatarURL
+		}
+		out = append(out, m)
+	}
+	respond.JSON(w, http.StatusOK, map[string]any{"items": out})
+}
+
+// --- Remove contact ---
+
+func (h *Cabinet) ApplicantRemoveContact(w http.ResponseWriter, r *http.Request) {
+	uid, _ := r.Context().Value(middleware.UserIDKey).(string)
+	userID, err := uuid.Parse(uid)
+	if err != nil {
+		respond.Error(w, http.StatusBadRequest, "invalid user id")
+		return
+	}
+	peerID, err := uuid.Parse(chi.URLParam(r, "peerId"))
+	if err != nil {
+		respond.Error(w, http.StatusBadRequest, "invalid peer id")
+		return
+	}
+	if err := h.Users.RemoveContact(r.Context(), userID, peerID); err != nil {
+		respond.Error(w, http.StatusInternalServerError, "failed to remove contact")
+		return
+	}
+	respond.JSON(w, http.StatusOK, map[string]any{"ok": true})
+}
+
+func (h *Cabinet) EmployerPublicProfile(w http.ResponseWriter, r *http.Request) {
+	uidStr := chi.URLParam(r, "userId")
+	uid, err := uuid.Parse(uidStr)
+	if err != nil {
+		respond.Error(w, http.StatusBadRequest, "invalid user id")
+		return
+	}
+	p, err := h.Users.GetPublicEmployerProfile(r.Context(), uid)
+	if err != nil {
+		respond.Error(w, http.StatusNotFound, "employer not found")
+		return
+	}
+	result := map[string]any{
+		"userId":      p.UserID,
+		"companyName": p.CompanyName,
+		"description": p.Description,
+		"industry":    p.Industry,
+		"website":     p.Website,
+		"verified":    p.Verified,
+	}
+	if p.LogoURL != nil {
+		result["logoUrl"] = *p.LogoURL
+	}
+	respond.JSON(w, http.StatusOK, result)
 }
 
 func (h *Cabinet) CuratorOpportunityStatus(w http.ResponseWriter, r *http.Request) {

@@ -1,9 +1,16 @@
-import type { Opportunity } from "@/lib/types";
+import type {
+  Opportunity,
+  ContactRequestApi,
+  SearchApplicantApi,
+  PublicProfileApi,
+  RecommendableContactApi,
+} from "@/lib/types";
 
 const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL?.trim() || "http://localhost:8080/api/v1";
 
 type OpportunityApi = {
   id: string;
+  authorId?: string;
   title: string;
   shortDescription: string;
   fullDescription: string;
@@ -32,7 +39,7 @@ function toOpportunity(item: OpportunityApi): Opportunity {
     shortDescription: item.shortDescription,
     fullDescription: item.fullDescription,
     companyName: item.companyName,
-    companyId: item.companyName.toLowerCase().replace(/\s+/g, "-"),
+    companyId: item.authorId ?? item.companyName.toLowerCase().replace(/\s+/g, "-"),
     type: item.type,
     workFormat: item.workFormat,
     locationLabel: item.locationLabel,
@@ -109,6 +116,10 @@ export type ApplicantContactApi = {
   email: string;
   name: string;
   since: string;
+  skills?: string[];
+  avatarUrl?: string;
+  bio?: string;
+  jobSearch?: string;
 };
 
 export type RecommendationInboxApi = {
@@ -117,9 +128,11 @@ export type RecommendationInboxApi = {
   fromName: string;
   opportunityId: string;
   opportunityTitle?: string;
-  opportunityCompany?: string;
+  companyName?: string;
+  locationLabel?: string;
   message: string;
   createdAt: string;
+  viewed: boolean;
 };
 
 type ApiResponse<T> = { items?: T; error?: string };
@@ -205,6 +218,7 @@ export async function createApplicantApplication(opportunityId: string, resumeSn
 export async function updateApplicantPrivacy(input: {
   hideApplicationsFromPeers: boolean;
   openProfileToNetwork: boolean;
+  blockRecommendations: boolean;
 }): Promise<void> {
   await apiFetch<{ ok: boolean }>("/applicant/privacy", {
     method: "PATCH",
@@ -326,4 +340,102 @@ export async function updateEmployerProfile(input: EmployerProfileDTO): Promise<
     method: "PATCH",
     body: JSON.stringify(input),
   });
+}
+
+// --- Contact Requests ---
+
+export async function sendContactRequest(toUserId: string): Promise<void> {
+  await apiFetch<{ ok: boolean }>("/applicant/contact-requests", {
+    method: "POST",
+    body: JSON.stringify({ toUserId }),
+  });
+}
+
+export async function fetchContactRequests(): Promise<ContactRequestApi[]> {
+  const data = await apiFetch<{ items: ContactRequestApi[] }>("/applicant/contact-requests", { method: "GET" });
+  return data.items ?? [];
+}
+
+export async function acceptContactRequest(requestId: string): Promise<void> {
+  await apiFetch<{ ok: boolean }>(`/applicant/contact-requests/${encodeURIComponent(requestId)}/accept`, {
+    method: "PATCH",
+  });
+}
+
+export async function rejectContactRequest(requestId: string): Promise<void> {
+  await apiFetch<{ ok: boolean }>(`/applicant/contact-requests/${encodeURIComponent(requestId)}/reject`, {
+    method: "PATCH",
+  });
+}
+
+// --- Search ---
+
+export async function searchApplicants(query: string): Promise<SearchApplicantApi[]> {
+  const data = await apiFetch<{ items: SearchApplicantApi[] }>(`/applicant/search?q=${encodeURIComponent(query)}`, { method: "GET" });
+  return data.items ?? [];
+}
+
+// --- Public Profile ---
+
+export async function fetchPublicProfile(userId: string): Promise<PublicProfileApi> {
+  return await apiFetch<PublicProfileApi>(`/applicant/profile/${encodeURIComponent(userId)}`, { method: "GET" });
+}
+
+// --- Mark recommendation viewed ---
+
+export async function markRecommendationViewed(recommendationId: string): Promise<void> {
+  await apiFetch<{ ok: boolean }>(`/applicant/recommendations/${encodeURIComponent(recommendationId)}/viewed`, {
+    method: "PATCH",
+  });
+}
+
+// --- Server-side favorites ---
+
+export async function fetchServerFavorites(): Promise<string[]> {
+  const data = await apiFetch<{ items: string[] }>("/applicant/favorites", { method: "GET" });
+  return data.items ?? [];
+}
+
+export async function addServerFavorite(opportunityId: string): Promise<void> {
+  await apiFetch<{ ok: boolean }>("/applicant/favorites", {
+    method: "POST",
+    body: JSON.stringify({ opportunityId }),
+  });
+}
+
+export async function removeServerFavorite(opportunityId: string): Promise<void> {
+  await apiFetch<{ ok: boolean }>(`/applicant/favorites/${encodeURIComponent(opportunityId)}`, {
+    method: "DELETE",
+  });
+}
+
+// --- Recommendable contacts (filtered by privacy) ---
+
+export async function fetchRecommendableContacts(): Promise<RecommendableContactApi[]> {
+  const data = await apiFetch<{ items: RecommendableContactApi[] }>("/applicant/recommendable-contacts", { method: "GET" });
+  return data.items ?? [];
+}
+
+// --- Remove contact ---
+
+export async function removeApplicantContact(peerId: string): Promise<void> {
+  await apiFetch<{ ok: boolean }>(`/applicant/contacts/${encodeURIComponent(peerId)}`, {
+    method: "DELETE",
+  });
+}
+
+// --- Public employer profile ---
+
+export type PublicEmployerProfileApi = {
+  userId: string;
+  companyName: string;
+  description: string;
+  industry: string;
+  website: string;
+  verified: boolean;
+  logoUrl?: string;
+};
+
+export async function fetchPublicEmployerProfile(userId: string): Promise<PublicEmployerProfileApi> {
+  return await apiFetch<PublicEmployerProfileApi>(`/employer/public-profile/${encodeURIComponent(userId)}`, { method: "GET" });
 }

@@ -134,7 +134,7 @@ export default function CompanyPage() {
                   saving && "opacity-70 cursor-not-allowed"
                 )}
               >
-                {saving ? "Сохранение..." : saved ? "Сохранено!" : "Сохранить в API"}
+                {saving ? "Сохранение..." : saved ? "Сохранено!" : "Сохранить"}
               </button>
             </div>
           </div>

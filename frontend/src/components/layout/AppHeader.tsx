@@ -10,35 +10,55 @@ import { ThemeToggle } from "@/components/theme/ThemeToggle";
 import { cn } from "@/lib/cn";
 import { roleLabelRu } from "@/lib/role-labels";
 import type { AuthUser } from "@/lib/types";
+import { HugeiconsIcon } from "@hugeicons/react";
+import {
+  Home01Icon,
+  MailOpen01Icon,
+  Contact01Icon,
+  Settings01Icon,
+  Briefcase01Icon,
+  Analytics01Icon,
+  Building01Icon,
+  DashboardSquare01Icon,
+  Login01Icon,
+  UserAdd01Icon,
+  Logout01Icon,
+  Menu01Icon,
+  Cancel01Icon,
+} from "@hugeicons/core-free-icons";
 
-function navFor(user: AuthUser | null) {
-  const home = { href: "/", label: "Главная" };
+type NavItem = { href: string; label: string; icon: typeof Home01Icon };
+
+function navFor(user: AuthUser | null): NavItem[] {
+  const home: NavItem = { href: "/", label: "Главная", icon: Home01Icon };
   if (!user) {
-    return [home, { href: "/login", label: "Вход" }, { href: "/register", label: "Регистрация" }];
+    return [
+      home,
+      { href: "/login", label: "Вход", icon: Login01Icon },
+      { href: "/register", label: "Регистрация", icon: UserAdd01Icon },
+    ];
   }
   if (user.role === "applicant") {
     return [
       home,
-      { href: "/applicant/applications", label: "Мои отклики" },
-      { href: "/applicant/recommendations", label: "Рекомендации" },
-      { href: "/applicant/contacts", label: "Контакты" },
-      { href: "/dashboard", label: "Кабинет" },
+      { href: "/applicant/applications", label: "Отклики", icon: MailOpen01Icon },
+      { href: "/applicant/contacts", label: "Контакты", icon: Contact01Icon },
+      { href: "/dashboard", label: "Кабинет", icon: Settings01Icon },
     ];
   }
   if (user.role === "employer") {
     return [
       home,
-      { href: "/employer/opportunities", label: "Мои карточки" },
-      { href: "/employer/opportunities/new", label: "Создать карточку" },
-      { href: "/employer/applications", label: "Отклики" },
-      { href: "/employer/stats", label: "Статистика" },
-      { href: "/employer/company", label: "Компания" },
+      { href: "/employer/opportunities", label: "Карточки", icon: Briefcase01Icon },
+      { href: "/employer/applications", label: "Отклики", icon: MailOpen01Icon },
+      { href: "/employer/stats", label: "Статистика", icon: Analytics01Icon },
+      { href: "/employer/company", label: "Компания", icon: Building01Icon },
     ];
   }
   if (user.role === "curator") {
-    return [home, { href: "/admin/dashboard", label: "Панель управления" }];
+    return [home, { href: "/admin/dashboard", label: "Управление", icon: DashboardSquare01Icon }];
   }
-  return [home, { href: "/dashboard", label: "Кабинет" }];
+  return [home, { href: "/dashboard", label: "Кабинет", icon: Settings01Icon }];
 }
 
 export function AppHeader() {
@@ -64,18 +84,19 @@ export function AppHeader() {
           </div>
         </Link>
 
-        <nav className="ml-auto hidden items-center gap-1 overflow-x-auto md:flex">
+        <nav className="ml-auto hidden items-center gap-1 md:flex">
           {nav.map((item) => (
             <Link
               key={item.href}
               href={item.href}
               className={cn(
-                "shrink-0 rounded-xl px-3 py-2 text-sm font-medium transition",
+                "inline-flex shrink-0 items-center gap-1.5 rounded-xl px-3 py-2 text-sm font-medium transition",
                 pathname === item.href
                   ? "bg-[var(--glass-bg-strong)] text-[var(--text-primary)]"
                   : "text-[var(--text-secondary)] hover:bg-[var(--glass-bg)] hover:text-[var(--text-primary)]",
               )}
             >
+              <HugeiconsIcon icon={item.icon} size={16} className="opacity-70" />
               {item.label}
             </Link>
           ))}
@@ -90,8 +111,9 @@ export function AppHeader() {
               <button
                 type="button"
                 onClick={logout}
-                className="rounded-xl px-3 py-2 text-sm text-[var(--text-secondary)] hover:bg-[var(--glass-bg)]"
+                className="inline-flex items-center gap-1.5 rounded-xl px-3 py-2 text-sm text-[var(--text-secondary)] hover:bg-[var(--glass-bg)]"
               >
+                <HugeiconsIcon icon={Logout01Icon} size={14} className="opacity-70" />
                 Выйти
               </button>
             </>
@@ -107,7 +129,7 @@ export function AppHeader() {
             aria-label="Меню"
             onClick={() => setOpen((v) => !v)}
           >
-            <span className="text-xl">{open ? "✕" : "☰"}</span>
+            <HugeiconsIcon icon={open ? Cancel01Icon : Menu01Icon} size={20} />
           </button>
         </div>
       </div>
@@ -127,12 +149,13 @@ export function AppHeader() {
                   href={item.href}
                   onClick={() => setOpen(false)}
                   className={cn(
-                    "block rounded-xl px-3 py-3 text-sm font-medium",
+                    "flex items-center gap-2.5 rounded-xl px-3 py-3 text-sm font-medium",
                     pathname === item.href
                       ? "bg-[var(--glass-bg)] text-[var(--text-primary)]"
                       : "text-[var(--text-secondary)]",
                   )}
                 >
+                  <HugeiconsIcon icon={item.icon} size={18} className="opacity-70" />
                   {item.label}
                 </Link>
               ))}
@@ -143,8 +166,9 @@ export function AppHeader() {
                     logout();
                     setOpen(false);
                   }}
-                  className="w-full rounded-xl px-3 py-3 text-left text-sm text-[var(--brand-magenta)]"
+                  className="flex w-full items-center gap-2.5 rounded-xl px-3 py-3 text-left text-sm text-[var(--brand-magenta)]"
                 >
+                  <HugeiconsIcon icon={Logout01Icon} size={18} className="opacity-70" />
                   Выйти
                 </button>
               )}

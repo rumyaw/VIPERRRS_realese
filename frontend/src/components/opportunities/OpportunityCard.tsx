@@ -5,6 +5,7 @@ import Link from "next/link";
 import { GlassPanel } from "@/components/ui/GlassPanel";
 import type { Opportunity } from "@/lib/types";
 import { cn } from "@/lib/cn";
+import { ShareMenu } from "@/components/opportunities/ShareMenu";
 
 const typeLabels: Record<Opportunity["type"], string> = {
   internship: "Стажировка",
@@ -25,11 +26,13 @@ export function OpportunityCard({
   favorite,
   onToggleFavorite,
   compact,
+  onRecommend,
 }: {
   opp: Opportunity;
   favorite?: boolean;
   onToggleFavorite?: () => void;
   compact?: boolean;
+  onRecommend?: string;
 }) {
   return (
     <motion.div
@@ -44,12 +47,6 @@ export function OpportunityCard({
           favorite && "ring-1 ring-[color-mix(in_srgb,var(--brand-orange)_55%,transparent)]",
         )}
       >
-        {opp.mediaUrl && !compact && (
-          <div
-            className="mb-4 h-36 w-full rounded-xl bg-cover bg-center opacity-90"
-            style={{ backgroundImage: `url(${opp.mediaUrl})` }}
-          />
-        )}
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div>
             <p className="text-xs font-medium uppercase tracking-wide text-[var(--brand-magenta)]">
@@ -109,6 +106,7 @@ export function OpportunityCard({
               {favorite ? "★ В избранном" : "☆ В избранное"}
             </button>
           )}
+          {onRecommend && <ShareMenu opportunityId={onRecommend} />}
         </div>
       </GlassPanel>
     </motion.div>

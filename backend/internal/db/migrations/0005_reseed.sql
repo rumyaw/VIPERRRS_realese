@@ -14,14 +14,14 @@ DELETE FROM users;
 -- Users
 -- ============================================================
 -- All passwords: password123
--- bcrypt cost 10: $2a$10$N9qo8uLOickgx2ZMRZoMyeIjZAgcfl7p92ldGxad68LJZdL17lhWy
+-- bcrypt cost 10: $2a$10$07Mj3rVkJ0mpGhatL2OyBOwsmD7SAHaIlu8khchBxKxiFfGl2A4B6
 
 -- Curator
 INSERT INTO users (id, email, password_hash, display_name, role)
 VALUES (
   '00000000-0000-4000-8000-000000000001',
   'admin@tramplin.ru',
-  '$2a$10$N9qo8uLOickgx2ZMRZoMyeIjZAgcfl7p92ldGxad68LJZdL17lhWy',
+  '$2a$10$07Mj3rVkJ0mpGhatL2OyBOwsmD7SAHaIlu8khchBxKxiFfGl2A4B6',
   'Куратор платформы',
   'curator'
 );
@@ -31,7 +31,7 @@ INSERT INTO users (id, email, password_hash, display_name, role)
 VALUES (
   '00000000-0000-4000-8000-000000000004',
   'curator@tramplin.ru',
-  '$2a$10$N9qo8uLOickgx2ZMRZoMyeIjZAgcfl7p92ldGxad68LJZdL17lhWy',
+  '$2a$10$07Mj3rVkJ0mpGhatL2OyBOwsmD7SAHaIlu8khchBxKxiFfGl2A4B6',
   'Куратор платформы',
   'curator'
 );
@@ -41,7 +41,7 @@ INSERT INTO users (id, email, password_hash, display_name, role)
 VALUES (
   '00000000-0000-4000-8000-000000000002',
   'hr@techcorp.ru',
-  '$2a$10$N9qo8uLOickgx2ZMRZoMyeIjZAgcfl7p92ldGxad68LJZdL17lhWy',
+  '$2a$10$07Mj3rVkJ0mpGhatL2OyBOwsmD7SAHaIlu8khchBxKxiFfGl2A4B6',
   'HR ТехКорп',
   'employer'
 );
@@ -51,7 +51,7 @@ INSERT INTO users (id, email, password_hash, display_name, role)
 VALUES (
   '00000000-0000-4000-8000-000000000003',
   'hr@greenstart.ru',
-  '$2a$10$N9qo8uLOickgx2ZMRZoMyeIjZAgcfl7p92ldGxad68LJZdL17lhWy',
+  '$2a$10$07Mj3rVkJ0mpGhatL2OyBOwsmD7SAHaIlu8khchBxKxiFfGl2A4B6',
   'HR ГринСтарт',
   'employer'
 );
@@ -61,7 +61,7 @@ INSERT INTO users (id, email, password_hash, display_name, role)
 VALUES (
   '00000000-0000-4000-8000-000000000010',
   'ivan@mail.ru',
-  '$2a$10$N9qo8uLOickgx2ZMRZoMyeIjZAgcfl7p92ldGxad68LJZdL17lhWy',
+  '$2a$10$07Mj3rVkJ0mpGhatL2OyBOwsmD7SAHaIlu8khchBxKxiFfGl2A4B6',
   'Иван Петров',
   'applicant'
 );
@@ -71,7 +71,7 @@ INSERT INTO users (id, email, password_hash, display_name, role)
 VALUES (
   '00000000-0000-4000-8000-000000000011',
   'maria@mail.ru',
-  '$2a$10$N9qo8uLOickgx2ZMRZoMyeIjZAgcfl7p92ldGxad68LJZdL17lhWy',
+  '$2a$10$07Mj3rVkJ0mpGhatL2OyBOwsmD7SAHaIlu8khchBxKxiFfGl2A4B6',
   'Мария Сидорова',
   'applicant'
 );
@@ -81,7 +81,7 @@ INSERT INTO users (id, email, password_hash, display_name, role)
 VALUES (
   '00000000-0000-4000-8000-000000000012',
   'alex@mail.ru',
-  '$2a$10$N9qo8uLOickgx2ZMRZoMyeIjZAgcfl7p92ldGxad68LJZdL17lhWy',
+  '$2a$10$07Mj3rVkJ0mpGhatL2OyBOwsmD7SAHaIlu8khchBxKxiFfGl2A4B6',
   'Александр Козлов',
   'applicant'
 );
@@ -91,7 +91,7 @@ INSERT INTO users (id, email, password_hash, display_name, role)
 VALUES (
   '00000000-0000-4000-8000-000000000013',
   'elena@mail.ru',
-  '$2a$10$N9qo8uLOickgx2ZMRZoMyeIjZAgcfl7p92ldGxad68LJZdL17lhWy',
+  '$2a$10$07Mj3rVkJ0mpGhatL2OyBOwsmD7SAHaIlu8khchBxKxiFfGl2A4B6',
   'Елена Волкова',
   'applicant'
 );

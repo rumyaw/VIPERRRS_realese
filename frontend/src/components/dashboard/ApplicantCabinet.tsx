@@ -362,6 +362,7 @@ export function ApplicantCabinet() {
                   await updateApplicantPrivacy({
                     hideApplicationsFromPeers: v,
                     openProfileToNetwork: profile.privacy.openProfileToNetwork,
+                    blockRecommendations: profile.privacy.blockRecommendations ?? false,
                   });
                   updateApplicant({
                     privacy: { ...profile.privacy, hideApplicationsFromPeers: v },
@@ -385,9 +386,34 @@ export function ApplicantCabinet() {
                   await updateApplicantPrivacy({
                     hideApplicationsFromPeers: profile.privacy.hideApplicationsFromPeers,
                     openProfileToNetwork: v,
+                    blockRecommendations: profile.privacy.blockRecommendations ?? false,
                   });
                   updateApplicant({
                     privacy: { ...profile.privacy, openProfileToNetwork: v },
+                  });
+                  showToast("Профиль успешно обновлён", "success");
+                } catch (e) {
+                  const msg = e instanceof Error ? e.message : "Не удалось обновить приватность";
+                  setApiError(msg);
+                  showToast(msg, "error");
+                }
+              })()
+            }
+          />
+          <ToggleRow
+            label="Запретить рекомендации"
+            description="Если включено, контакты не смогут рекомендовать вам вакансии. Вы не будете отображаться в списке для рекомендаций."
+            checked={profile.privacy.blockRecommendations ?? false}
+            onChange={(v) =>
+              void (async () => {
+                try {
+                  await updateApplicantPrivacy({
+                    hideApplicationsFromPeers: profile.privacy.hideApplicationsFromPeers,
+                    openProfileToNetwork: profile.privacy.openProfileToNetwork,
+                    blockRecommendations: v,
+                  });
+                  updateApplicant({
+                    privacy: { ...profile.privacy, blockRecommendations: v },
                   });
                   showToast("Профиль успешно обновлён", "success");
                 } catch (e) {

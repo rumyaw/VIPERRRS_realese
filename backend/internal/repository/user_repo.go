@@ -52,10 +52,66 @@ type EmployerProfileDTO struct {
 }
 
 type ApplicantContact struct {
-	PeerID    uuid.UUID
+	PeerID       uuid.UUID
+	Email        string
+	Name         string
+	Connected    string
+	Skills       []string
+	AvatarURL    *string
+	Bio          string
+	JobSearch    string
+}
+
+type ContactRequest struct {
+	ID         uuid.UUID
+	FromUserID uuid.UUID
+	FromName   string
+	FromEmail  string
+	Skills     []string
+	AvatarURL  *string
+	Bio        string
+	Status     string
+	CreatedAt  string
+}
+
+type PublicProfile struct {
+	UserID          uuid.UUID
+	Email           string
+	DisplayName     string
+	FullName        string
+	University      string
+	CourseOrYear    string
+	Bio             string
+	Skills          []string
+	AvatarURL       *string
+	JobSearchStatus string
+	Resume          map[string]any
+	Privacy         map[string]any
+	RepoLinks       []string
+	Applications    []PublicApplication
+	Contacts        []PublicContact
+}
+
+type PublicApplication struct {
+	OpportunityID    uuid.UUID
+	OpportunityTitle string
+	CompanyName      string
+	Status           string
+	CreatedAt        string
+}
+
+type PublicContact struct {
+	PeerID uuid.UUID
+	Name   string
+}
+
+type SearchApplicantResult struct {
+	UserID    uuid.UUID
 	Email     string
 	Name      string
-	Connected string
+	Skills    []string
+	AvatarURL *string
+	Bio       string
 }
 
 type RecommendationInboxItem struct {
@@ -68,6 +124,7 @@ type RecommendationInboxItem struct {
 	OpportunityTitle string
 	CompanyName      string
 	LocationLabel    string
+	Viewed           bool
 }
 
 func NewUserRepository(pool *pgxpool.Pool) *UserRepository {
@@ -343,13 +400,14 @@ func (r *UserRepository) RecommendationInbox(ctx context.Context, toUserID uuid.
 	const q = `
 SELECT r.id, r.from_user_id, COALESCE(ap.full_name, u.display_name) AS from_name,
        r.opportunity_id, r.message, r.created_at::text,
-       COALESCE(o.title, ''), COALESCE(o.company_name, ''), COALESCE(o.location_label, '')
+       COALESCE(o.title, ''), COALESCE(o.company_name, ''), COALESCE(o.location_label, ''),
+       r.viewed
 FROM recommendations r
 JOIN users u ON u.id = r.from_user_id
 LEFT JOIN applicant_profiles ap ON ap.user_id = u.id
 LEFT JOIN opportunities o ON o.id = r.opportunity_id
 WHERE r.to_user_id = $1
-ORDER BY r.created_at DESC`
+ORDER BY r.viewed ASC, r.created_at DESC`
 	rows, err := r.pool.Query(ctx, q, toUserID)
 	if err != nil {
 		return nil, err
@@ -358,10 +416,398 @@ ORDER BY r.created_at DESC`
 	out := make([]RecommendationInboxItem, 0)
 	for rows.Next() {
 		var it RecommendationInboxItem
-		if err := rows.Scan(&it.ID, &it.FromUserID, &it.FromName, &it.OpportunityID, &it.Message, &it.CreatedAt, &it.OpportunityTitle, &it.CompanyName, &it.LocationLabel); err != nil {
+		if err := rows.Scan(&it.ID, &it.FromUserID, &it.FromName, &it.OpportunityID, &it.Message, &it.CreatedAt, &it.OpportunityTitle, &it.CompanyName, &it.LocationLabel, &it.Viewed); err != nil {
 			return nil, err
 		}
 		out = append(out, it)
 	}
 	return out, rows.Err()
+}
+
+func (r *UserRepository) MarkRecommendationViewed(ctx context.Context, userID, recID uuid.UUID) error {
+	const q = `UPDATE recommendations SET viewed = true WHERE id = $1 AND to_user_id = $2`
+	res, err := r.pool.Exec(ctx, q, recID, userID)
+	if err != nil {
+		return err
+	}
+	if res.RowsAffected() == 0 {
+		return fmt.Errorf("recommendation not found")
+	}
+	return nil
+}
+
+// --- Contact Requests ---
+
+func (r *UserRepository) SendContactRequest(ctx context.Context, fromUserID, toUserID uuid.UUID) error {
+	if fromUserID == toUserID {
+		return fmt.Errorf("cannot send request to yourself")
+	}
+	var exists bool
+	r.pool.QueryRow(ctx, `SELECT EXISTS(SELECT 1 FROM applicant_contacts WHERE user_id=$1 AND peer_id=$2)`, fromUserID, toUserID).Scan(&exists)
+	if exists {
+		return fmt.Errorf("already in contacts")
+	}
+	const q = `
+INSERT INTO contact_requests (from_user_id, to_user_id, status)
+VALUES ($1, $2, 'pending')
+ON CONFLICT (from_user_id, to_user_id) DO UPDATE SET status = 'pending', updated_at = now()
+WHERE contact_requests.status = 'rejected'`
+	_, err := r.pool.Exec(ctx, q, fromUserID, toUserID)
+	return err
+}
+
+func (r *UserRepository) ListIncomingContactRequests(ctx context.Context, userID uuid.UUID) ([]ContactRequest, error) {
+	const q = `
+SELECT cr.id, cr.from_user_id, COALESCE(ap.full_name, u.display_name), u.email,
+       COALESCE(ap.skills, '{}'), ap.avatar_url, COALESCE(ap.bio, ''), cr.status, cr.created_at::text
+FROM contact_requests cr
+JOIN users u ON u.id = cr.from_user_id
+LEFT JOIN applicant_profiles ap ON ap.user_id = u.id
+WHERE cr.to_user_id = $1 AND cr.status = 'pending'
+ORDER BY cr.created_at DESC`
+	rows, err := r.pool.Query(ctx, q, userID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	out := make([]ContactRequest, 0)
+	for rows.Next() {
+		var cr ContactRequest
+		if err := rows.Scan(&cr.ID, &cr.FromUserID, &cr.FromName, &cr.FromEmail, &cr.Skills, &cr.AvatarURL, &cr.Bio, &cr.Status, &cr.CreatedAt); err != nil {
+			return nil, err
+		}
+		out = append(out, cr)
+	}
+	return out, rows.Err()
+}
+
+func (r *UserRepository) AcceptContactRequest(ctx context.Context, userID, requestID uuid.UUID) error {
+	var fromUserID uuid.UUID
+	err := r.pool.QueryRow(ctx,
+		`UPDATE contact_requests SET status='accepted', updated_at=now() WHERE id=$1 AND to_user_id=$2 AND status='pending' RETURNING from_user_id`,
+		requestID, userID).Scan(&fromUserID)
+	if err != nil {
+		return fmt.Errorf("request not found or already processed")
+	}
+	const q = `
+INSERT INTO applicant_contacts (user_id, peer_id)
+VALUES ($1, $2), ($2, $1)
+ON CONFLICT DO NOTHING`
+	_, err = r.pool.Exec(ctx, q, userID, fromUserID)
+	return err
+}
+
+func (r *UserRepository) RejectContactRequest(ctx context.Context, userID, requestID uuid.UUID) error {
+	const q = `UPDATE contact_requests SET status='rejected', updated_at=now() WHERE id=$1 AND to_user_id=$2 AND status='pending'`
+	res, err := r.pool.Exec(ctx, q, requestID, userID)
+	if err != nil {
+		return err
+	}
+	if res.RowsAffected() == 0 {
+		return fmt.Errorf("request not found or already processed")
+	}
+	return nil
+}
+
+// --- Search Applicants ---
+
+func (r *UserRepository) SearchApplicants(ctx context.Context, query string, currentUserID uuid.UUID) ([]SearchApplicantResult, error) {
+	const q = `
+SELECT u.id, u.email, COALESCE(ap.full_name, u.display_name),
+       COALESCE(ap.skills, '{}'), ap.avatar_url, COALESCE(ap.bio, '')
+FROM users u
+LEFT JOIN applicant_profiles ap ON ap.user_id = u.id
+WHERE u.role = 'applicant'
+  AND u.id <> $2
+  AND (lower(COALESCE(ap.full_name, u.display_name)) LIKE '%' || lower($1) || '%'
+       OR lower(u.email) LIKE '%' || lower($1) || '%')
+ORDER BY COALESCE(ap.full_name, u.display_name)
+LIMIT 20`
+	rows, err := r.pool.Query(ctx, q, query, currentUserID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	out := make([]SearchApplicantResult, 0)
+	for rows.Next() {
+		var s SearchApplicantResult
+		if err := rows.Scan(&s.UserID, &s.Email, &s.Name, &s.Skills, &s.AvatarURL, &s.Bio); err != nil {
+			return nil, err
+		}
+		out = append(out, s)
+	}
+	return out, rows.Err()
+}
+
+// --- Public Profile ---
+
+func (r *UserRepository) GetPublicProfile(ctx context.Context, targetUserID, viewerUserID uuid.UUID) (*PublicProfile, error) {
+	var p PublicProfile
+	var resume, privacy map[string]any
+	const q = `
+SELECT u.id, u.email, u.display_name,
+       COALESCE(ap.full_name, ''), COALESCE(ap.university, ''), COALESCE(ap.course_or_year, ''),
+       COALESCE(ap.bio, ''), COALESCE(ap.skills, '{}'), ap.avatar_url,
+       COALESCE(ap.job_search_status::text, 'active_search'),
+       COALESCE(ap.resume, '{}'), COALESCE(ap.privacy, '{}'), COALESCE(ap.repo_links, '{}')
+FROM users u
+LEFT JOIN applicant_profiles ap ON ap.user_id = u.id
+WHERE u.id = $1 AND u.role = 'applicant'`
+	if err := r.pool.QueryRow(ctx, q, targetUserID).Scan(
+		&p.UserID, &p.Email, &p.DisplayName,
+		&p.FullName, &p.University, &p.CourseOrYear,
+		&p.Bio, &p.Skills, &p.AvatarURL,
+		&p.JobSearchStatus, &resume, &privacy, &p.RepoLinks,
+	); err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return nil, nil
+		}
+		return nil, err
+	}
+	p.Resume = resume
+	p.Privacy = privacy
+
+	openProfile, _ := privacy["openProfileToNetwork"].(bool)
+	hideApps, _ := privacy["hideApplicationsFromPeers"].(bool)
+
+	if openProfile && !hideApps {
+		apps, _ := r.listPublicApplications(ctx, targetUserID)
+		p.Applications = apps
+	}
+
+	if openProfile {
+		contacts, _ := r.listPublicContacts(ctx, targetUserID)
+		p.Contacts = contacts
+	}
+
+	return &p, nil
+}
+
+func (r *UserRepository) listPublicApplications(ctx context.Context, userID uuid.UUID) ([]PublicApplication, error) {
+	const q = `
+SELECT a.opportunity_id, COALESCE(o.title, ''), COALESCE(o.company_name, ''), a.status::text, a.created_at::text
+FROM applications a
+LEFT JOIN opportunities o ON o.id = a.opportunity_id
+WHERE a.applicant_id = $1
+ORDER BY a.created_at DESC`
+	rows, err := r.pool.Query(ctx, q, userID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	out := make([]PublicApplication, 0)
+	for rows.Next() {
+		var a PublicApplication
+		if err := rows.Scan(&a.OpportunityID, &a.OpportunityTitle, &a.CompanyName, &a.Status, &a.CreatedAt); err != nil {
+			return nil, err
+		}
+		out = append(out, a)
+	}
+	return out, rows.Err()
+}
+
+func (r *UserRepository) listPublicContacts(ctx context.Context, userID uuid.UUID) ([]PublicContact, error) {
+	const q = `
+SELECT c.peer_id, COALESCE(ap.full_name, u.display_name)
+FROM applicant_contacts c
+JOIN users u ON u.id = c.peer_id
+LEFT JOIN applicant_profiles ap ON ap.user_id = u.id
+WHERE c.user_id = $1
+ORDER BY c.created_at DESC`
+	rows, err := r.pool.Query(ctx, q, userID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	out := make([]PublicContact, 0)
+	for rows.Next() {
+		var c PublicContact
+		if err := rows.Scan(&c.PeerID, &c.Name); err != nil {
+			return nil, err
+		}
+		out = append(out, c)
+	}
+	return out, rows.Err()
+}
+
+// --- Favorites ---
+
+func (r *UserRepository) AddFavorite(ctx context.Context, userID, opportunityID uuid.UUID) error {
+	const q = `INSERT INTO favorites (user_id, opportunity_id) VALUES ($1, $2) ON CONFLICT DO NOTHING`
+	_, err := r.pool.Exec(ctx, q, userID, opportunityID)
+	return err
+}
+
+func (r *UserRepository) RemoveFavorite(ctx context.Context, userID, opportunityID uuid.UUID) error {
+	const q = `DELETE FROM favorites WHERE user_id = $1 AND opportunity_id = $2`
+	_, err := r.pool.Exec(ctx, q, userID, opportunityID)
+	return err
+}
+
+func (r *UserRepository) ListFavoriteIDs(ctx context.Context, userID uuid.UUID) ([]uuid.UUID, error) {
+	const q = `SELECT opportunity_id FROM favorites WHERE user_id = $1 ORDER BY created_at DESC`
+	rows, err := r.pool.Query(ctx, q, userID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	out := make([]uuid.UUID, 0)
+	for rows.Next() {
+		var id uuid.UUID
+		if err := rows.Scan(&id); err != nil {
+			return nil, err
+		}
+		out = append(out, id)
+	}
+	return out, rows.Err()
+}
+
+// --- Privacy update (v2 with blockRecommendations) ---
+
+func (r *UserRepository) UpdateApplicantPrivacyV2(ctx context.Context, userID uuid.UUID, hideApplications, openProfile, blockRecommendations bool) error {
+	raw := map[string]bool{
+		"hideApplicationsFromPeers": hideApplications,
+		"openProfileToNetwork":      openProfile,
+		"blockRecommendations":      blockRecommendations,
+	}
+	b, err := json.Marshal(raw)
+	if err != nil {
+		return err
+	}
+	const q = `UPDATE applicant_profiles SET privacy = $2::jsonb, updated_at = now() WHERE user_id = $1`
+	res, err := r.pool.Exec(ctx, q, userID, string(b))
+	if err != nil {
+		return err
+	}
+	if res.RowsAffected() == 0 {
+		return fmt.Errorf("applicant profile not found")
+	}
+	return nil
+}
+
+// --- Create recommendation with checks ---
+
+func (r *UserRepository) CreateRecommendationChecked(ctx context.Context, fromUserID, toUserID, opportunityID uuid.UUID, message string) error {
+	var privacy map[string]any
+	var jobSearch string
+	err := r.pool.QueryRow(ctx,
+		`SELECT COALESCE(ap.privacy, '{}'), COALESCE(ap.job_search_status::text, 'active_search')
+		 FROM applicant_profiles ap WHERE ap.user_id = $1`, toUserID).Scan(&privacy, &jobSearch)
+	if err != nil {
+		return fmt.Errorf("target user profile not found")
+	}
+
+	if jobSearch == "not_looking" {
+		return fmt.Errorf("пользователь не ищет работу")
+	}
+	if blocked, ok := privacy["blockRecommendations"].(bool); ok && blocked {
+		return fmt.Errorf("пользователь запретил рекомендации")
+	}
+
+	const q = `
+INSERT INTO recommendations (from_user_id, to_user_id, opportunity_id, message)
+VALUES ($1, $2, $3, $4)`
+	_, err = r.pool.Exec(ctx, q, fromUserID, toUserID, opportunityID, message)
+	return err
+}
+
+// --- Contacts list v2 (with skills, avatar, bio) ---
+
+func (r *UserRepository) ListContactsV2(ctx context.Context, userID uuid.UUID) ([]ApplicantContact, error) {
+	const q = `
+SELECT c.peer_id, u.email, COALESCE(ap.full_name, u.display_name), c.created_at::text,
+       COALESCE(ap.skills, '{}'), ap.avatar_url, COALESCE(ap.bio, ''), COALESCE(ap.job_search_status::text, 'active_search')
+FROM applicant_contacts c
+JOIN users u ON u.id = c.peer_id
+LEFT JOIN applicant_profiles ap ON ap.user_id = u.id
+WHERE c.user_id = $1
+ORDER BY c.created_at DESC`
+	rows, err := r.pool.Query(ctx, q, userID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	out := make([]ApplicantContact, 0)
+	for rows.Next() {
+		var c ApplicantContact
+		if err := rows.Scan(&c.PeerID, &c.Email, &c.Name, &c.Connected, &c.Skills, &c.AvatarURL, &c.Bio, &c.JobSearch); err != nil {
+			return nil, err
+		}
+		out = append(out, c)
+	}
+	return out, rows.Err()
+}
+
+// --- Recommendable contacts (for sharing menu) ---
+
+func (r *UserRepository) ListRecommendableContacts(ctx context.Context, userID uuid.UUID) ([]ApplicantContact, error) {
+	const q = `
+SELECT c.peer_id, u.email, COALESCE(ap.full_name, u.display_name), c.created_at::text,
+       COALESCE(ap.skills, '{}'), ap.avatar_url, COALESCE(ap.bio, ''), COALESCE(ap.job_search_status::text, 'active_search')
+FROM applicant_contacts c
+JOIN users u ON u.id = c.peer_id
+LEFT JOIN applicant_profiles ap ON ap.user_id = u.id
+WHERE c.user_id = $1
+  AND COALESCE(ap.job_search_status::text, 'active_search') <> 'not_looking'
+  AND NOT COALESCE((ap.privacy->>'blockRecommendations')::boolean, false)
+ORDER BY COALESCE(ap.full_name, u.display_name)`
+	rows, err := r.pool.Query(ctx, q, userID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	out := make([]ApplicantContact, 0)
+	for rows.Next() {
+		var c ApplicantContact
+		if err := rows.Scan(&c.PeerID, &c.Email, &c.Name, &c.Connected, &c.Skills, &c.AvatarURL, &c.Bio, &c.JobSearch); err != nil {
+			return nil, err
+		}
+		out = append(out, c)
+	}
+	return out, rows.Err()
+}
+
+// --- Contact relationship check ---
+
+func (r *UserRepository) IsContact(ctx context.Context, userID, peerID uuid.UUID) (bool, error) {
+	var exists bool
+	err := r.pool.QueryRow(ctx, `SELECT EXISTS(SELECT 1 FROM applicant_contacts WHERE user_id=$1 AND peer_id=$2)`, userID, peerID).Scan(&exists)
+	return exists, err
+}
+
+func (r *UserRepository) HasPendingRequest(ctx context.Context, fromUserID, toUserID uuid.UUID) (bool, error) {
+	var exists bool
+	err := r.pool.QueryRow(ctx, `SELECT EXISTS(SELECT 1 FROM contact_requests WHERE from_user_id=$1 AND to_user_id=$2 AND status='pending')`, fromUserID, toUserID).Scan(&exists)
+	return exists, err
+}
+
+func (r *UserRepository) RemoveContact(ctx context.Context, userID, peerID uuid.UUID) error {
+	const q = `DELETE FROM applicant_contacts WHERE (user_id=$1 AND peer_id=$2) OR (user_id=$2 AND peer_id=$1)`
+	_, err := r.pool.Exec(ctx, q, userID, peerID)
+	return err
+}
+
+type PublicEmployerProfile struct {
+	UserID      string
+	CompanyName string
+	Description string
+	Industry    string
+	Website     string
+	Verified    bool
+	LogoURL     *string
+}
+
+func (r *UserRepository) GetPublicEmployerProfile(ctx context.Context, userID uuid.UUID) (*PublicEmployerProfile, error) {
+	const q = `
+SELECT ep.user_id, ep.company_name, ep.description, ep.industry, ep.website, ep.verified, ep.logo_url
+FROM employer_profiles ep
+WHERE ep.user_id = $1`
+	var p PublicEmployerProfile
+	var uid uuid.UUID
+	err := r.pool.QueryRow(ctx, q, userID).Scan(&uid, &p.CompanyName, &p.Description, &p.Industry, &p.Website, &p.Verified, &p.LogoURL)
+	if err != nil {
+		return nil, err
+	}
+	p.UserID = uid.String()
+	return &p, nil
 }

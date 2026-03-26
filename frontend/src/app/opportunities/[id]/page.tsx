@@ -13,8 +13,9 @@ import type { Opportunity } from "@/lib/types";
 import { cn } from "@/lib/cn";
 import { fetchOpportunityById } from "@/lib/api";
 import { createApplicantApplication } from "@/lib/api";
-import { fetchApplicantContacts, sendRecommendation } from "@/lib/api";
+import { addServerFavorite, removeServerFavorite } from "@/lib/api";
 import { useToast } from "@/hooks/useToast";
+import { ShareMenu } from "@/components/opportunities/ShareMenu";
 
 const YandexMap = dynamic(
   () => import("@/components/map/YandexMap").then((m) => m.YandexMap),
@@ -46,13 +47,9 @@ export default function OpportunityPage() {
   const { user } = useAuth();
   const { favoriteIds, toggle, has } = useFavorites();
   const { showToast } = useToast();
-  const [recText, setRecText] = useState("");
-  const [recSent, setRecSent] = useState(false);
   const [applyOpen, setApplyOpen] = useState(false);
   const [applyTick, setApplyTick] = useState(0);
   const [apiOpp, setApiOpp] = useState<Opportunity | null | undefined>(undefined);
-  const [contacts, setContacts] = useState<Array<{ peerId: string; name: string }>>([]);
-  const [toPeerId, setToPeerId] = useState("");
 
   useEffect(() => {
     if (!params.id) return;
@@ -63,21 +60,7 @@ export default function OpportunityPage() {
     return () => abort.abort();
   }, [params.id]);
 
-  useEffect(() => {
-    if (user?.role !== "applicant") return;
-    void fetchApplicantContacts()
-      .then((items) => {
-        setContacts(items);
-        if (items.length > 0) setToPeerId(items[0].peerId);
-      })
-      .catch(() => {
-        setContacts([]);
-      });
-  }, [user?.role]);
-
   const opp = apiOpp ?? null;
-
-  const canRecommend = user?.role === "applicant";
 
   const alreadyApplied = useMemo(() => {
     void applyTick;
@@ -138,7 +121,12 @@ export default function OpportunityPage() {
               </span>
             </div>
             <h1 className="text-3xl font-bold text-[var(--text-primary)]">{opp.title}</h1>
-            <p className="text-lg text-[var(--brand-magenta)]">{opp.companyName}</p>
+            <Link
+              href={`/employer/profile/${opp.companyId}`}
+              className="text-lg text-[var(--brand-magenta)] hover:underline"
+            >
+              {opp.companyName}
+            </Link>
             <div className="prose prose-invert max-w-none text-[var(--text-secondary)]">
               <p className="whitespace-pre-wrap">{opp.fullDescription}</p>
             </div>
@@ -217,6 +205,13 @@ export default function OpportunityPage() {
                     return;
                   }
                   toggle(opp.id);
+                  if (user.role === "applicant") {
+                    if (has(opp.id)) {
+                      removeServerFavorite(opp.id).catch(() => {});
+                    } else {
+                      addServerFavorite(opp.id).catch(() => {});
+                    }
+                  }
                 }}
                 className={cn(
                   "glass-panel rounded-xl px-5 py-3 text-sm font-semibold",
@@ -248,6 +243,7 @@ export default function OpportunityPage() {
                       Откликнуться с резюме
                     </button>
                   )}
+                  <ShareMenu opportunityId={opp.id} />
                 </>
               )}
             </div>
@@ -259,56 +255,17 @@ export default function OpportunityPage() {
             <YandexMap opportunities={[opp]} favoriteIds={favoriteIds} />
           </GlassPanel>
 
-          {canRecommend && (
+          {user?.role === "applicant" && (
             <GlassPanel className="p-6">
               <h2 className="text-lg font-semibold text-[var(--text-primary)]">
-                Рекомендация контакту
+                Порекомендовать вакансию
               </h2>
               <p className="mt-2 text-sm text-[var(--text-secondary)]">
-                Соискатели могут отправить вакансию в рекомендации профессиональному контакту (в
-                бэкенде — уведомление и запись в ленте рекомендаций).
+                Отправьте эту вакансию своим контактам через Трамплин или мессенджеры.
               </p>
-              <textarea
-                className="glass-input mt-4 min-h-[88px] w-full px-4 py-3 text-sm outline-none"
-                placeholder="Короткое сообщение для контакта…"
-                value={recText}
-                onChange={(e) => setRecText(e.target.value)}
-              />
-              <select
-                className="glass-select mt-3 w-full px-4 py-3 text-sm outline-none"
-                value={toPeerId}
-                onChange={(e) => setToPeerId(e.target.value)}
-              >
-                {contacts.length === 0 && <option value="">Нет контактов</option>}
-                {contacts.map((c) => (
-                  <option key={c.peerId} value={c.peerId}>
-                    {c.name}
-                  </option>
-                ))}
-              </select>
-              <button
-                type="button"
-                onClick={() => {
-                  if (!toPeerId) return;
-                  void sendRecommendation({
-                    toUserId: toPeerId,
-                    opportunityId: opp.id,
-                    message: recText || "Рекомендую обратить внимание на эту возможность",
-                  })
-                    .then(() => {
-                      setRecSent(true);
-                      setRecText("");
-                      showToast("Рекомендация отправлена", "success");
-                    })
-                    .catch(() => {
-                      setRecSent(false);
-                      showToast("Не удалось выполнить операцию", "error");
-                    });
-                }}
-                className="mt-3 w-full rounded-xl border border-[var(--glass-border)] bg-[var(--glass-bg-strong)] py-2.5 text-sm font-medium text-[var(--text-primary)] transition hover:bg-[var(--glass-bg)]"
-              >
-                {recSent ? "Отправлено" : "Отправить рекомендацию"}
-              </button>
+              <div className="mt-4">
+                <ShareMenu opportunityId={opp.id} />
+              </div>
             </GlassPanel>
           )}
         </div>

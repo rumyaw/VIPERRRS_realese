@@ -2,7 +2,7 @@
 
 import { motion } from "framer-motion";
 import dynamic from "next/dynamic";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, useCallback } from "react";
 import { OpportunityCard } from "@/components/opportunities/OpportunityCard";
 import { GlassPanel } from "@/components/ui/GlassPanel";
 import { useAuth } from "@/contexts/auth-context";
@@ -11,8 +11,9 @@ import Link from "next/link";
 import { TAG_PRESETS } from "@/lib/mock-data";
 import type { Opportunity, WorkFormat } from "@/lib/types";
 import { cn } from "@/lib/cn";
-import { fetchOpportunities } from "@/lib/api";
+import { fetchOpportunities, fetchServerFavorites, addServerFavorite, removeServerFavorite } from "@/lib/api";
 import { useToast } from "@/hooks/useToast";
+import { ShareMenu } from "@/components/opportunities/ShareMenu";
 
 const YandexMap = dynamic(
   () => import("@/components/map/YandexMap").then((m) => m.YandexMap),
@@ -26,11 +27,23 @@ export default function HomePage() {
   const [q, setQ] = useState("");
   const [tag, setTag] = useState<string | "">("");
   const [format, setFormat] = useState<WorkFormat | "">("");
+  const [city, setCity] = useState("");
   const [view, setView] = useState<"map" | "list">("map");
   const [popupId, setPopupId] = useState<string | null>(null);
   const [opportunities, setOpportunities] = useState<Opportunity[]>([]);
   const [apiLoaded, setApiLoaded] = useState(false);
   const [apiError, setApiError] = useState(false);
+  const [serverFavIds, setServerFavIds] = useState<Set<string>>(new Set());
+  const [showFavorites, setShowFavorites] = useState(false);
+
+  const cities = useMemo(() => {
+    const set = new Set<string>();
+    opportunities.forEach((o) => {
+      const c = o.locationLabel.split(",")[0].trim();
+      if (c) set.add(c);
+    });
+    return Array.from(set).sort();
+  }, [opportunities]);
 
   useEffect(() => {
     const abort = new AbortController();
@@ -45,15 +58,47 @@ export default function HomePage() {
     return () => abort.abort();
   }, []);
 
+  useEffect(() => {
+    if (user?.role === "applicant") {
+      fetchServerFavorites().then((ids) => setServerFavIds(new Set(ids))).catch(() => {});
+    }
+  }, [user]);
+
+  const handleToggleFavorite = useCallback(
+    (oppId: string) => {
+      if (!user) {
+        showToast("Войдите или зарегистрируйтесь, чтобы добавить в избранное", "info");
+        return;
+      }
+      toggle(oppId);
+      if (user.role === "applicant") {
+        if (serverFavIds.has(oppId)) {
+          removeServerFavorite(oppId).catch(() => {});
+          setServerFavIds((prev) => { const n = new Set(prev); n.delete(oppId); return n; });
+        } else {
+          addServerFavorite(oppId).catch(() => {});
+          setServerFavIds((prev) => new Set(prev).add(oppId));
+        }
+      }
+    },
+    [user, toggle, serverFavIds, showToast],
+  );
+
+  const favoriteOpps = useMemo(() => {
+    return opportunities.filter((o) => has(o.id));
+  }, [opportunities, favoriteIds]);
+
   const filtered = useMemo(() => {
     return opportunities.filter((o) => {
+      if (has(o.id)) return false;
       const hay = `${o.title} ${o.companyName} ${o.tags.join(" ")}`.toLowerCase();
       if (q && !hay.includes(q.toLowerCase())) return false;
       if (tag && !o.tags.includes(tag)) return false;
       if (format && o.workFormat !== format) return false;
+      if (city && !o.locationLabel.startsWith(city)) return false;
       return true;
     });
-  }, [q, tag, format, opportunities]);
+  }, [q, tag, format, city, opportunities, favoriteIds]);
 
   const popupOpp = useMemo(() => {
     if (!popupId) return null;
@@ -118,7 +163,7 @@ export default function HomePage() {
               onChange={(e) => setQ(e.target.value)}
             />
           </div>
-          <div className="grid flex-1 gap-3 sm:grid-cols-2">
+          <div className="grid flex-1 gap-3 sm:grid-cols-3">
             <div className="space-y-2">
               <label className="text-xs font-medium text-[var(--text-secondary)]">Тег / стек</label>
               <select
@@ -145,6 +190,21 @@ export default function HomePage() {
                 <option value="office">Офис</option>
                 <option value="hybrid">Гибрид</option>
                 <option value="remote">Удалённо</option>
+              </select>
+            </div>
+            <div className="space-y-2">
+              <label className="text-xs font-medium text-[var(--text-secondary)]">Город</label>
+              <select
+                className="glass-select w-full px-4 py-3 text-sm outline-none"
+                value={city}
+                onChange={(e) => setCity(e.target.value)}
+              >
+                <option value="">Все города</option>
+                {cities.map((c) => (
+                  <option key={c} value={c}>
+                    {c}
+                  </option>
+                ))}
               </select>
             </div>
           </div>
@@ -195,22 +255,50 @@ export default function HomePage() {
           />
         </motion.div>
       ) : (
-        <div className="grid gap-5 md:grid-cols-2">
-          {filtered.map((opp: Opportunity) => (
-            <div key={opp.id} className="h-full">
-              <OpportunityCard
-                opp={opp}
-                favorite={has(opp.id)}
-                onToggleFavorite={() => {
-                  if (!user) {
-                    showToast("Войдите или зарегистрируйтесь, чтобы добавить в избранное", "info");
-                    return;
-                  }
-                  toggle(opp.id);
-                }}
-              />
+        <div className="space-y-8">
+          {/* Мои избранные */}
+          {favoriteOpps.length > 0 && (
+            <div>
+              <button
+                type="button"
+                onClick={() => setShowFavorites(!showFavorites)}
+                className="mb-4 flex items-center gap-2 text-lg font-semibold text-[var(--brand-orange)]"
+              >
+                ★ Мои избранные ({favoriteOpps.length})
+                <span className="text-sm font-normal text-[var(--text-secondary)]">
+                  {showFavorites ? "▲ свернуть" : "▼ развернуть"}
+                </span>
+              </button>
+              {showFavorites && (
+                <div className="grid gap-5 md:grid-cols-2">
+                  {favoriteOpps.map((opp: Opportunity) => (
+                    <div key={opp.id} className="h-full">
+                      <OpportunityCard
+                        opp={opp}
+                        favorite
+                        onToggleFavorite={() => handleToggleFavorite(opp.id)}
+                        onRecommend={user?.role === "applicant" ? opp.id : undefined}
+                      />
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
-          ))}
+          )}
+
+          {/* Общий список */}
+          <div className="grid gap-5 md:grid-cols-2">
+            {filtered.map((opp: Opportunity) => (
+              <div key={opp.id} className="h-full">
+                <OpportunityCard
+                  opp={opp}
+                  favorite={has(opp.id)}
+                  onToggleFavorite={() => handleToggleFavorite(opp.id)}
+                  onRecommend={user?.role === "applicant" ? opp.id : undefined}
+                />
+              </div>
+            ))}
+          </div>
         </div>
       )}
 
@@ -244,7 +332,8 @@ export default function HomePage() {
               opp={popupOpp}
               compact
               favorite={has(popupOpp.id)}
-              onToggleFavorite={user ? () => toggle(popupOpp.id) : undefined}
+              onToggleFavorite={user ? () => handleToggleFavorite(popupOpp.id) : undefined}
+              onRecommend={user?.role === "applicant" ? popupOpp.id : undefined}
             />
           </motion.div>
         </motion.div>

@@ -31,6 +31,7 @@ export function defaultApplicantProfile(over?: Partial<ApplicantProfile>): Appli
     privacy: {
       hideApplicationsFromPeers: false,
       openProfileToNetwork: true,
+      blockRecommendations: false,
     },
   };
   if (!over) return base;

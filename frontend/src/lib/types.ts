@@ -70,7 +70,66 @@ export interface ApplicantProfile {
   privacy: {
     hideApplicationsFromPeers: boolean;
     openProfileToNetwork: boolean;
+    blockRecommendations: boolean;
   };
+}
+
+export interface ContactRequestApi {
+  id: string;
+  fromUserId: string;
+  fromName: string;
+  fromEmail: string;
+  skills: string[];
+  avatarUrl?: string;
+  bio: string;
+  status: string;
+  createdAt: string;
+}
+
+export interface SearchApplicantApi {
+  userId: string;
+  email: string;
+  name: string;
+  skills: string[];
+  avatarUrl?: string;
+  bio: string;
+  isContact: boolean;
+  hasPending: boolean;
+}
+
+export interface PublicProfileApi {
+  userId: string;
+  email: string;
+  displayName: string;
+  fullName: string;
+  bio: string;
+  skills: string[];
+  avatarUrl?: string;
+  jobSearchStatus: string;
+  isContact: boolean;
+  hasPending: boolean;
+  openProfile: boolean;
+  university?: string;
+  courseOrYear?: string;
+  repoLinks?: string[];
+  resume?: ApplicantResume;
+  contacts?: { peerId: string; name: string }[];
+  applications?: {
+    opportunityId: string;
+    opportunityTitle: string;
+    companyName: string;
+    status: string;
+    createdAt: string;
+  }[];
+}
+
+export interface RecommendableContactApi {
+  peerId: string;
+  name: string;
+  skills: string[];
+  avatarUrl?: string;
+  bio: string;
+  jobSearch: string;
 }
 
 export interface EmployerProfile {

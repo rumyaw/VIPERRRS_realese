@@ -48,6 +48,7 @@ func (h *Opportunities) Get(w http.ResponseWriter, r *http.Request) {
 func opportunityDTO(o *domain.Opportunity) map[string]any {
 	m := map[string]any{
 		"id":               o.ID.String(),
+		"authorId":         o.AuthorID.String(),
 		"title":            o.Title,
 		"shortDescription": o.ShortDescription,
 		"fullDescription":  o.FullDescription,
@@ -62,7 +63,7 @@ func opportunityDTO(o *domain.Opportunity) map[string]any {
 		"contacts":         o.Contacts,
 	}
 	if o.Lon != nil && o.Lat != nil {
-		m["coords"] = []float64{*o.Lon, *o.Lat}
+		m["coords"] = []float64{*o.Lat, *o.Lon}
 	}
 	if o.SalaryMin != nil {
 		m["salaryMin"] = *o.SalaryMin

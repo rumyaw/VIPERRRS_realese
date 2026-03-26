@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import type { Opportunity } from "@/lib/types";
 
 const SCRIPT_ID = "yandex-maps-2-1-script";
@@ -87,6 +87,16 @@ export function YandexMap({
   const containerRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<{ destroy: () => void } | null>(null);
 
+  const [isDark, setIsDark] = useState(true);
+
+  useEffect(() => {
+    const check = () => setIsDark(document.documentElement.classList.contains("dark"));
+    check();
+    const observer = new MutationObserver(check);
+    observer.observe(document.documentElement, { attributes: true, attributeFilter: ["class"] });
+    return () => observer.disconnect();
+  }, []);
+
   useEffect(() => {
     const apiKey = process.env.NEXT_PUBLIC_YANDEX_MAPS_API_KEY;
     const el = containerRef.current;
@@ -121,10 +131,10 @@ export function YandexMap({
           s.textContent = [
             ".ymaps-dark-map { filter: invert(1) hue-rotate(180deg) brightness(0.95) contrast(0.9); }",
             '.ymaps-dark-map [class*="-placemark"], .ymaps-dark-map [class*="-icon"], .ymaps-dark-map img[src*="islands"] { filter: invert(1) hue-rotate(180deg); }',
-            '[class*="-balloon__layout"] { background-color: #1a1a2e !important; border: 1px solid #3d3d5c !important; border-radius: 14px !important; box-shadow: 0 8px 32px rgba(0,0,0,0.6) !important; overflow: hidden !important; }',
-            '[class*="-balloon__content"] { background: #1a1a2e !important; padding: 0 !important; margin: 0 !important; }',
-            '[class*="-balloon__close-button"] { filter: invert(1) brightness(2) !important; }',
-            '[class*="-balloon__tail"]::after { background: #1a1a2e !important; }',
+            '.dark [class*="-balloon__layout"] { background-color: #1a1a2e !important; border: 1px solid #3d3d5c !important; border-radius: 14px !important; box-shadow: 0 8px 32px rgba(0,0,0,0.6) !important; overflow: hidden !important; }',
+            '.dark [class*="-balloon__content"] { background: #1a1a2e !important; padding: 0 !important; margin: 0 !important; }',
+            '.dark [class*="-balloon__close-button"] { filter: invert(1) brightness(2) !important; }',
+            '.dark [class*="-balloon__tail"]::after { background: #1a1a2e !important; }',
           ].join("\n");
           document.head.appendChild(s);
         }
@@ -239,7 +249,7 @@ export function YandexMap({
   return (
     <div
       ref={containerRef}
-      className={`ymaps-dark-map ${className ?? "h-[min(62vh,560px)] w-full overflow-hidden rounded-2xl"}`}
+      className={`${isDark ? "ymaps-dark-map" : ""} ${className ?? "h-[min(62vh,560px)] w-full overflow-hidden rounded-2xl"}`}
     />
   );
 }

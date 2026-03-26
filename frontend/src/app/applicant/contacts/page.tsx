@@ -3,61 +3,155 @@
 import { motion } from "framer-motion";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { useAuth } from "@/contexts/auth-context";
 import { GlassPanel } from "@/components/ui/GlassPanel";
 import { JOB_SEARCH_LABELS } from "@/lib/profile-defaults";
+import { cn } from "@/lib/cn";
 import {
-  addApplicantContact,
   fetchApplicantContacts,
+  fetchContactRequests,
+  acceptContactRequest,
+  rejectContactRequest,
+  fetchRecommendationsInbox,
+  markRecommendationViewed,
+  searchApplicants,
+  sendContactRequest,
+  removeApplicantContact,
   type ApplicantContactApi,
+  type RecommendationInboxApi,
 } from "@/lib/api";
+import type { ContactRequestApi, SearchApplicantApi } from "@/lib/types";
+import { useToast } from "@/hooks/useToast";
+import { HugeiconsIcon } from "@hugeicons/react";
+import {
+  Mail01Icon,
+  Building01Icon,
+  Calendar01Icon,
+  ArrowRight01Icon,
+  Search01Icon,
+  UserAdd01Icon,
+  CheckmarkCircle01Icon,
+  Cancel01Icon,
+  Delete01Icon,
+} from "@hugeicons/core-free-icons";
+
+const tabs = [
+  { id: "contacts" as const, label: "Мои контакты" },
+  { id: "requests" as const, label: "Заявки" },
+  { id: "recommendations" as const, label: "Рекомендации" },
+];
+
+type TabId = (typeof tabs)[number]["id"];
 
 export default function ContactsPage() {
   const { user } = useAuth();
   const router = useRouter();
+  const { showToast } = useToast();
+  const [tab, setTab] = useState<TabId>("contacts");
   const [contacts, setContacts] = useState<ApplicantContactApi[]>([]);
+  const [requests, setRequests] = useState<ContactRequestApi[]>([]);
+  const [recommendations, setRecommendations] = useState<RecommendationInboxApi[]>([]);
   const [loading, setLoading] = useState(true);
-  const [contactEmail, setContactEmail] = useState("");
-  const [error, setError] = useState<string | null>(null);
-  const [adding, setAdding] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [searchResults, setSearchResults] = useState<SearchApplicantApi[]>([]);
+  const [searching, setSearching] = useState(false);
 
   useEffect(() => {
     if (!user || user.role !== "applicant") {
       router.replace("/dashboard");
       return;
     }
-    loadContacts();
+    loadAll();
   }, [user, router]);
 
-  const loadContacts = async () => {
+  const loadAll = useCallback(async () => {
+    setLoading(true);
     try {
-      const data = await fetchApplicantContacts();
-      setContacts(data);
-    } catch (e) {
-      setError(e instanceof Error ? e.message : "Не удалось загрузить контакты");
+      const [c, r, rec] = await Promise.all([
+        fetchApplicantContacts(),
+        fetchContactRequests(),
+        fetchRecommendationsInbox(),
+      ]);
+      setContacts(c);
+      setRequests(r);
+      setRecommendations(rec);
+    } catch {
+      showToast("Не удалось загрузить данные", "error");
     } finally {
       setLoading(false);
     }
-  };
+  }, [showToast]);
 
-  const handleAdd = async () => {
-    if (!contactEmail.trim()) return;
-    setAdding(true);
-    setError(null);
+  const handleSearch = async () => {
+    if (!searchQuery.trim()) return;
+    setSearching(true);
     try {
-      await addApplicantContact(contactEmail.trim());
-      const updated = await fetchApplicantContacts();
-      setContacts(updated);
-      setContactEmail("");
-    } catch (e) {
-      setError(e instanceof Error ? e.message : "Не удалось добавить контакт");
+      const results = await searchApplicants(searchQuery.trim());
+      setSearchResults(results);
+    } catch {
+      showToast("Ошибка поиска", "error");
     } finally {
-      setAdding(false);
+      setSearching(false);
     }
   };
 
-  const profile = user?.applicant;
+  const handleSendRequest = async (toUserId: string) => {
+    try {
+      await sendContactRequest(toUserId);
+      showToast("Заявка отправлена", "success");
+      setSearchResults((prev) =>
+        prev.map((s) => (s.userId === toUserId ? { ...s, hasPending: true } : s)),
+      );
+    } catch {
+      showToast("Не удалось отправить заявку", "error");
+    }
+  };
+
+  const handleAccept = async (requestId: string) => {
+    try {
+      await acceptContactRequest(requestId);
+      showToast("Заявка принята", "success");
+      await loadAll();
+    } catch {
+      showToast("Не удалось принять заявку", "error");
+    }
+  };
+
+  const handleReject = async (requestId: string) => {
+    try {
+      await rejectContactRequest(requestId);
+      showToast("Заявка отклонена", "info");
+      setRequests((prev) => prev.filter((r) => r.id !== requestId));
+    } catch {
+      showToast("Не удалось отклонить заявку", "error");
+    }
+  };
+
+  const handleMarkViewed = async (recId: string) => {
+    try {
+      await markRecommendationViewed(recId);
+      setRecommendations((prev) =>
+        prev.map((r) => (r.id === recId ? { ...r, viewed: true } : r)),
+      );
+      showToast("Перемещено в архив", "info");
+    } catch {
+      showToast("Ошибка", "error");
+    }
+  };
+
+  const handleRemoveContact = async (peerId: string) => {
+    try {
+      await removeApplicantContact(peerId);
+      setContacts((prev) => prev.filter((c) => c.peerId !== peerId));
+      showToast("Контакт удалён", "info");
+    } catch {
+      showToast("Не удалось удалить контакт", "error");
+    }
+  };
+
+  const activeRecs = recommendations.filter((r) => !r.viewed);
+  const archivedRecs = recommendations.filter((r) => r.viewed);
 
   return (
     <div className="mx-auto max-w-4xl space-y-6">
@@ -74,72 +168,395 @@ export default function ContactsPage() {
         </Link>
       </div>
 
-      {profile && (
-        <GlassPanel className="p-4">
-          <p className="text-sm text-[var(--text-secondary)]">
-            Ваш статус поиска:{" "}
-            <span className="font-medium text-[var(--text-primary)]">
-              {JOB_SEARCH_LABELS[profile.jobSearchStatus]}
-            </span>
-            {" — "}виден контактам при открытом нетворкинге.
-          </p>
-        </GlassPanel>
-      )}
-
-      <GlassPanel className="p-6">
-        <h2 className="text-lg font-semibold text-[var(--text-primary)]">Добавить контакт</h2>
-        <div className="mt-3 flex gap-2">
-          <input
-            className="glass-input flex-1 px-4 py-3 text-sm"
-            placeholder="Email соискателя для добавления в контакты"
-            value={contactEmail}
-            onChange={(e) => setContactEmail(e.target.value)}
-            onKeyDown={(e) => {
-              if (e.key === "Enter") void handleAdd();
-            }}
-          />
+      {/* Tabs */}
+      <div className="flex flex-wrap gap-2">
+        {tabs.map((t) => (
           <button
+            key={t.id}
             type="button"
-            disabled={adding || !contactEmail.trim()}
-            onClick={() => void handleAdd()}
-            className="rounded-xl bg-[linear-gradient(135deg,var(--brand-magenta),var(--brand-orange))] px-5 py-3 text-sm font-semibold text-white shadow-lg transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-60"
+            onClick={() => setTab(t.id)}
+            className={cn(
+              "rounded-full px-4 py-2 text-sm font-medium transition",
+              tab === t.id
+                ? "bg-[linear-gradient(135deg,color-mix(in_srgb,var(--brand-purple)_70%,var(--brand-cyan)),var(--brand-magenta))] text-white shadow-md"
+                : "glass-panel text-[var(--text-secondary)] hover:text-[var(--text-primary)]",
+            )}
           >
-            {adding ? "Добавление..." : "Добавить"}
+            {t.label}
+            {t.id === "requests" && requests.length > 0 && (
+              <span className="ml-2 inline-flex h-5 w-5 items-center justify-center rounded-full bg-red-500 text-xs text-white">
+                {requests.length}
+              </span>
+            )}
+            {t.id === "recommendations" && activeRecs.length > 0 && (
+              <span className="ml-2 inline-flex h-5 w-5 items-center justify-center rounded-full bg-[var(--brand-cyan)] text-xs text-white">
+                {activeRecs.length}
+              </span>
+            )}
           </button>
-        </div>
-        {error && <p className="mt-2 text-xs text-red-300">{error}</p>}
-      </GlassPanel>
+        ))}
+      </div>
 
       {loading ? (
         <GlassPanel className="flex h-48 items-center justify-center">
           <div className="h-8 w-8 animate-spin rounded-full border-2 border-[var(--brand-cyan)] border-t-transparent" />
         </GlassPanel>
-      ) : contacts.length === 0 ? (
-        <GlassPanel className="flex h-48 flex-col items-center justify-center gap-3 p-8 text-center">
-          <p className="text-lg font-medium text-[var(--text-primary)]">Нет контактов</p>
-          <p className="text-sm text-[var(--text-secondary)]">
-            Добавьте соискателей по email, чтобы обмениваться рекомендациями
-          </p>
-        </GlassPanel>
       ) : (
-        <div className="space-y-3">
-          {contacts.map((c, idx) => (
-            <motion.div
-              key={c.peerId}
-              initial={{ opacity: 0, y: 16 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: idx * 0.04 }}
-            >
-              <GlassPanel className="flex items-center justify-between p-4">
-                <div>
-                  <p className="font-medium text-[var(--text-primary)]">{c.name}</p>
-                  <p className="text-xs text-[var(--text-secondary)]">{c.email}</p>
+        <>
+          {/* ===== МОИ КОНТАКТЫ ===== */}
+          {tab === "contacts" && (
+            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-4">
+              {/* Поиск соискателей */}
+              <GlassPanel className="p-5">
+                <h2 className="text-lg font-semibold text-[var(--text-primary)]">Найти соискателя</h2>
+                <div className="mt-3 flex gap-2">
+                  <div className="relative flex-1">
+                    <HugeiconsIcon
+                      icon={Search01Icon}
+                      size={16}
+                      className="absolute left-3 top-1/2 -translate-y-1/2 text-[var(--text-secondary)]"
+                    />
+                    <input
+                      className="glass-input w-full py-3 pl-10 pr-4 text-sm"
+                      placeholder="Имя или email..."
+                      value={searchQuery}
+                      onChange={(e) => setSearchQuery(e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter") void handleSearch();
+                      }}
+                    />
+                  </div>
+                  <button
+                    type="button"
+                    disabled={searching || !searchQuery.trim()}
+                    onClick={() => void handleSearch()}
+                    className="rounded-xl bg-[linear-gradient(135deg,var(--brand-magenta),var(--brand-orange))] px-5 py-3 text-sm font-semibold text-white shadow-lg transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-60"
+                  >
+                    {searching ? "Поиск..." : "Найти"}
+                  </button>
                 </div>
-                <span className="text-xs text-[var(--text-secondary)]">с {c.since}</span>
+
+                {searchResults.length > 0 && (
+                  <div className="mt-4 space-y-2">
+                    {searchResults.map((s) => (
+                      <div
+                        key={s.userId}
+                        className="flex items-center justify-between gap-3 rounded-xl border border-[var(--glass-border)] p-3"
+                      >
+                        <div className="flex items-center gap-3">
+                          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-[var(--brand-magenta)] to-[var(--brand-orange)]">
+                            {s.avatarUrl ? (
+                              <img src={s.avatarUrl} alt="" className="h-full w-full rounded-full object-cover" />
+                            ) : (
+                              <span className="text-sm font-bold text-white">{s.name[0]}</span>
+                            )}
+                          </div>
+                          <div>
+                            <Link href={`/applicant/profile/${s.userId}`} className="font-medium text-[var(--text-primary)] hover:underline">
+                              {s.name}
+                            </Link>
+                            <p className="text-xs text-[var(--text-secondary)]">{s.skills?.slice(0, 3).join(", ")}</p>
+                          </div>
+                        </div>
+                        <div className="flex gap-2">
+                          <Link
+                            href={`/applicant/profile/${s.userId}`}
+                            className="rounded-lg border border-[var(--glass-border)] px-3 py-1.5 text-xs text-[var(--text-secondary)] hover:text-[var(--text-primary)]"
+                          >
+                            Профиль
+                          </Link>
+                          {s.isContact ? (
+                            <span className="rounded-lg bg-emerald-500/10 px-3 py-1.5 text-xs text-emerald-300">
+                              В контактах
+                            </span>
+                          ) : s.hasPending ? (
+                            <span className="rounded-lg bg-yellow-500/10 px-3 py-1.5 text-xs text-yellow-300">
+                              Заявка отправлена
+                            </span>
+                          ) : (
+                            <button
+                              type="button"
+                              onClick={() => void handleSendRequest(s.userId)}
+                              className="flex items-center gap-1 rounded-lg bg-[var(--brand-cyan)]/20 px-3 py-1.5 text-xs text-[var(--brand-cyan)] hover:bg-[var(--brand-cyan)]/30"
+                            >
+                              <HugeiconsIcon icon={UserAdd01Icon} size={12} />
+                              Добавить
+                            </button>
+                          )}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
               </GlassPanel>
+
+              {contacts.length === 0 ? (
+                <GlassPanel className="flex h-48 flex-col items-center justify-center gap-3 p-8 text-center">
+                  <p className="text-lg font-medium text-[var(--text-primary)]">Нет контактов</p>
+                  <p className="text-sm text-[var(--text-secondary)]">
+                    Найдите соискателей и отправьте заявку для добавления
+                  </p>
+                </GlassPanel>
+              ) : (
+                <div className="space-y-3">
+                  {contacts.map((c, idx) => (
+                    <motion.div
+                      key={c.peerId}
+                      initial={{ opacity: 0, y: 16 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ delay: idx * 0.04 }}
+                    >
+                      <GlassPanel className="p-4">
+                        <div className="flex items-center gap-4">
+                          <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-[var(--brand-magenta)] to-[var(--brand-orange)]">
+                            {c.avatarUrl ? (
+                              <img src={c.avatarUrl} alt="" className="h-full w-full rounded-full object-cover" />
+                            ) : (
+                              <span className="text-lg font-bold text-white">{c.name[0]}</span>
+                            )}
+                          </div>
+                          <div className="flex-1">
+                            <Link
+                              href={`/applicant/profile/${c.peerId}`}
+                              className="font-medium text-[var(--text-primary)] hover:underline"
+                            >
+                              {c.name}
+                            </Link>
+                            <p className="text-xs text-[var(--text-secondary)]">{c.email}</p>
+                            {c.skills && c.skills.length > 0 && (
+                              <div className="mt-1 flex flex-wrap gap-1">
+                                {c.skills.slice(0, 4).map((s) => (
+                                  <span
+                                    key={s}
+                                    className="rounded border border-[var(--glass-border)] bg-[color-mix(in_srgb,var(--brand-cyan)_12%,transparent)] px-1.5 py-0.5 text-[10px] text-[var(--text-primary)]"
+                                  >
+                                    {s}
+                                  </span>
+                                ))}
+                              </div>
+                            )}
+                          </div>
+                          <div className="flex flex-col items-end gap-1">
+                            {c.jobSearch && (
+                              <span className="text-xs text-[var(--text-secondary)]">
+                                {JOB_SEARCH_LABELS[c.jobSearch as keyof typeof JOB_SEARCH_LABELS] ?? c.jobSearch}
+                              </span>
+                            )}
+                            <div className="flex gap-2">
+                              <Link
+                                href={`/applicant/profile/${c.peerId}`}
+                                className="rounded-lg border border-[var(--glass-border)] px-3 py-1 text-xs text-[var(--text-secondary)] hover:text-[var(--text-primary)]"
+                              >
+                                Профиль
+                              </Link>
+                              <button
+                                type="button"
+                                onClick={() => void handleRemoveContact(c.peerId)}
+                                className="rounded-lg border border-red-500/30 px-2 py-1 text-xs text-red-300 hover:bg-red-500/10"
+                                title="Удалить контакт"
+                              >
+                                <HugeiconsIcon icon={Delete01Icon} size={12} />
+                              </button>
+                            </div>
+                          </div>
+                        </div>
+                      </GlassPanel>
+                    </motion.div>
+                  ))}
+                </div>
+              )}
             </motion.div>
-          ))}
-        </div>
+          )}
+
+          {/* ===== ЗАЯВКИ ===== */}
+          {tab === "requests" && (
+            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-3">
+              {requests.length === 0 ? (
+                <GlassPanel className="flex h-48 flex-col items-center justify-center gap-3 p-8 text-center">
+                  <HugeiconsIcon icon={Mail01Icon} size={40} className="text-[var(--text-secondary)]" />
+                  <p className="text-lg font-medium text-[var(--text-primary)]">Нет входящих заявок</p>
+                  <p className="text-sm text-[var(--text-secondary)]">
+                    Когда кто-то отправит вам заявку, она появится здесь
+                  </p>
+                </GlassPanel>
+              ) : (
+                requests.map((req, idx) => (
+                  <motion.div
+                    key={req.id}
+                    initial={{ opacity: 0, y: 16 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: idx * 0.05 }}
+                  >
+                    <GlassPanel className="p-5">
+                      <div className="flex items-start gap-4">
+                        <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-[var(--brand-cyan)] to-[var(--brand-magenta)]">
+                          {req.avatarUrl ? (
+                            <img src={req.avatarUrl} alt="" className="h-full w-full rounded-full object-cover" />
+                          ) : (
+                            <span className="text-lg font-bold text-white">{req.fromName[0]}</span>
+                          )}
+                        </div>
+                        <div className="flex-1">
+                          <Link
+                            href={`/applicant/profile/${req.fromUserId}`}
+                            className="font-medium text-[var(--text-primary)] hover:underline"
+                          >
+                            {req.fromName}
+                          </Link>
+                          <p className="text-xs text-[var(--text-secondary)]">{req.fromEmail}</p>
+                          {req.skills && req.skills.length > 0 && (
+                            <div className="mt-2 flex flex-wrap gap-1">
+                              {req.skills.map((s) => (
+                                <span
+                                  key={s}
+                                  className="rounded border border-[var(--glass-border)] bg-[color-mix(in_srgb,var(--brand-cyan)_12%,transparent)] px-1.5 py-0.5 text-[10px] text-[var(--text-primary)]"
+                                >
+                                  {s}
+                                </span>
+                              ))}
+                            </div>
+                          )}
+                          {req.bio && (
+                            <p className="mt-2 text-sm text-[var(--text-secondary)]">{req.bio}</p>
+                          )}
+                        </div>
+                        <div className="flex gap-2">
+                          <button
+                            type="button"
+                            onClick={() => void handleAccept(req.id)}
+                            className="flex items-center gap-1 rounded-xl bg-emerald-500/20 px-4 py-2 text-sm font-medium text-emerald-300 transition hover:bg-emerald-500/30"
+                          >
+                            <HugeiconsIcon icon={CheckmarkCircle01Icon} size={16} />
+                            Принять
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => void handleReject(req.id)}
+                            className="flex items-center gap-1 rounded-xl border border-red-500/30 px-4 py-2 text-sm font-medium text-red-300 transition hover:bg-red-500/10"
+                          >
+                            <HugeiconsIcon icon={Cancel01Icon} size={16} />
+                            Отклонить
+                          </button>
+                        </div>
+                      </div>
+                    </GlassPanel>
+                  </motion.div>
+                ))
+              )}
+            </motion.div>
+          )}
+
+          {/* ===== РЕКОМЕНДАЦИИ ===== */}
+          {tab === "recommendations" && (
+            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-6">
+              {activeRecs.length === 0 && archivedRecs.length === 0 ? (
+                <GlassPanel className="flex h-64 flex-col items-center justify-center gap-4 p-8 text-center">
+                  <HugeiconsIcon icon={Mail01Icon} size={48} className="text-[var(--text-secondary)]" />
+                  <div>
+                    <p className="text-lg font-medium text-[var(--text-primary)]">Нет рекомендаций</p>
+                    <p className="text-sm text-[var(--text-secondary)]">Друзья пока не рекомендовали вам вакансии</p>
+                  </div>
+                </GlassPanel>
+              ) : (
+                <>
+                  {activeRecs.length > 0 && (
+                    <div className="space-y-3">
+                      <h2 className="text-lg font-semibold text-[var(--text-primary)]">Новые рекомендации</h2>
+                      {activeRecs.map((rec, idx) => (
+                        <motion.div
+                          key={rec.id}
+                          initial={{ opacity: 0, y: 20 }}
+                          animate={{ opacity: 1, y: 0 }}
+                          transition={{ delay: idx * 0.05 }}
+                        >
+                          <GlassPanel className="p-5">
+                            <div className="flex items-start gap-4">
+                              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-[var(--brand-magenta)] to-[var(--brand-orange)]">
+                                <span className="text-sm font-bold text-white">{rec.fromName[0]}</span>
+                              </div>
+                              <div className="flex-1">
+                                <p className="text-sm text-[var(--text-secondary)]">
+                                  <Link
+                                    href={`/applicant/profile/${rec.fromUserId}`}
+                                    className="font-medium text-[var(--text-primary)] hover:underline"
+                                  >
+                                    {rec.fromName}
+                                  </Link>{" "}
+                                  рекомендует вам
+                                </p>
+                                <h3 className="mt-1 text-lg font-semibold text-[var(--text-primary)]">
+                                  {rec.opportunityTitle || "Вакансия"}
+                                </h3>
+                                <div className="mt-1 flex items-center gap-4 text-sm text-[var(--text-secondary)]">
+                                  {rec.companyName && (
+                                    <span className="flex items-center gap-1">
+                                      <HugeiconsIcon icon={Building01Icon} size={14} />
+                                      {rec.companyName}
+                                    </span>
+                                  )}
+                                  <span className="flex items-center gap-1">
+                                    <HugeiconsIcon icon={Calendar01Icon} size={14} />
+                                    {new Date(rec.createdAt).toLocaleDateString("ru-RU")}
+                                  </span>
+                                </div>
+                                {rec.message && (
+                                  <div className="mt-3 rounded-lg bg-[var(--glass-bg-strong)] p-3">
+                                    <p className="text-sm italic text-[var(--text-secondary)]">&ldquo;{rec.message}&rdquo;</p>
+                                  </div>
+                                )}
+                                <div className="mt-4 flex gap-3">
+                                  <Link
+                                    href={`/opportunities/${rec.opportunityId}`}
+                                    className="inline-flex items-center gap-1 text-sm text-[var(--brand-cyan)] hover:underline"
+                                  >
+                                    Посмотреть вакансию <HugeiconsIcon icon={ArrowRight01Icon} size={12} />
+                                  </Link>
+                                  <button
+                                    type="button"
+                                    onClick={() => void handleMarkViewed(rec.id)}
+                                    className="text-sm text-[var(--text-secondary)] hover:text-[var(--text-primary)]"
+                                  >
+                                    Просмотрено ✓
+                                  </button>
+                                </div>
+                              </div>
+                            </div>
+                          </GlassPanel>
+                        </motion.div>
+                      ))}
+                    </div>
+                  )}
+
+                  {archivedRecs.length > 0 && (
+                    <div className="space-y-3">
+                      <h2 className="text-lg font-semibold text-[var(--text-secondary)]">Архив рекомендаций</h2>
+                      {archivedRecs.map((rec) => (
+                        <GlassPanel key={rec.id} className="p-4 opacity-60">
+                          <div className="flex items-center justify-between">
+                            <div>
+                              <p className="text-sm text-[var(--text-secondary)]">
+                                {rec.fromName} → {rec.opportunityTitle || "Вакансия"}
+                              </p>
+                              <p className="text-xs text-[var(--text-secondary)]">
+                                {new Date(rec.createdAt).toLocaleDateString("ru-RU")}
+                              </p>
+                            </div>
+                            <Link
+                              href={`/opportunities/${rec.opportunityId}`}
+                              className="text-xs text-[var(--brand-cyan)] hover:underline"
+                            >
+                              Открыть
+                            </Link>
+                          </div>
+                        </GlassPanel>
+                      ))}
+                    </div>
+                  )}
+                </>
+              )}
+            </motion.div>
+          )}
+        </>
       )}
     </div>
   );

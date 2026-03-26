@@ -159,14 +159,14 @@ CREATE INDEX IF NOT EXISTS idx_recommendations_to_user ON recommendations (to_us
 -- Users
 -- ============================================================
 -- All passwords: password123
--- bcrypt cost 10: $2a$10$N9qo8uLOickgx2ZMRZoMyeIjZAgcfl7p92ldGxad68LJZdL17lhWy
+-- bcrypt cost 10: $2a$10$07Mj3rVkJ0mpGhatL2OyBOwsmD7SAHaIlu8khchBxKxiFfGl2A4B6
 
 -- Admin / Curator
 INSERT INTO users (id, email, password_hash, display_name, role)
 VALUES (
   '00000000-0000-4000-8000-000000000001',
   'admin@tramplin.ru',
-  '$2a$10$N9qo8uLOickgx2ZMRZoMyeIjZAgcfl7p92ldGxad68LJZdL17lhWy',
+  '$2a$10$07Mj3rVkJ0mpGhatL2OyBOwsmD7SAHaIlu8khchBxKxiFfGl2A4B6',
   'Администратор',
   'admin'
 ) ON CONFLICT DO NOTHING;
@@ -176,7 +176,7 @@ INSERT INTO users (id, email, password_hash, display_name, role)
 VALUES (
   '00000000-0000-4000-8000-000000000002',
   'hr@techcorp.ru',
-  '$2a$10$N9qo8uLOickgx2ZMRZoMyeIjZAgcfl7p92ldGxad68LJZdL17lhWy',
+  '$2a$10$07Mj3rVkJ0mpGhatL2OyBOwsmD7SAHaIlu8khchBxKxiFfGl2A4B6',
   'HR ТехКорп',
   'employer'
 ) ON CONFLICT DO NOTHING;
@@ -186,7 +186,7 @@ INSERT INTO users (id, email, password_hash, display_name, role)
 VALUES (
   '00000000-0000-4000-8000-000000000003',
   'hr@greenstart.ru',
-  '$2a$10$N9qo8uLOickgx2ZMRZoMyeIjZAgcfl7p92ldGxad68LJZdL17lhWy',
+  '$2a$10$07Mj3rVkJ0mpGhatL2OyBOwsmD7SAHaIlu8khchBxKxiFfGl2A4B6',
   'HR ГринСтарт',
   'employer'
 ) ON CONFLICT DO NOTHING;
@@ -196,7 +196,7 @@ INSERT INTO users (id, email, password_hash, display_name, role)
 VALUES (
   '00000000-0000-4000-8000-000000000010',
   'ivan@mail.ru',
-  '$2a$10$N9qo8uLOickgx2ZMRZoMyeIjZAgcfl7p92ldGxad68LJZdL17lhWy',
+  '$2a$10$07Mj3rVkJ0mpGhatL2OyBOwsmD7SAHaIlu8khchBxKxiFfGl2A4B6',
   'Иван Петров',
   'applicant'
 ) ON CONFLICT DO NOTHING;
@@ -206,7 +206,7 @@ INSERT INTO users (id, email, password_hash, display_name, role)
 VALUES (
   '00000000-0000-4000-8000-000000000011',
   'maria@mail.ru',
-  '$2a$10$N9qo8uLOickgx2ZMRZoMyeIjZAgcfl7p92ldGxad68LJZdL17lhWy',
+  '$2a$10$07Mj3rVkJ0mpGhatL2OyBOwsmD7SAHaIlu8khchBxKxiFfGl2A4B6',
   'Мария Сидорова',
   'applicant'
 ) ON CONFLICT DO NOTHING;
@@ -216,7 +216,7 @@ INSERT INTO users (id, email, password_hash, display_name, role)
 VALUES (
   '00000000-0000-4000-8000-000000000012',
   'alex@mail.ru',
-  '$2a$10$N9qo8uLOickgx2ZMRZoMyeIjZAgcfl7p92ldGxad68LJZdL17lhWy',
+  '$2a$10$07Mj3rVkJ0mpGhatL2OyBOwsmD7SAHaIlu8khchBxKxiFfGl2A4B6',
   'Александр Козлов',
   'applicant'
 ) ON CONFLICT DO NOTHING;
@@ -226,7 +226,7 @@ INSERT INTO users (id, email, password_hash, display_name, role)
 VALUES (
   '00000000-0000-4000-8000-000000000013',
   'elena@mail.ru',
-  '$2a$10$N9qo8uLOickgx2ZMRZoMyeIjZAgcfl7p92ldGxad68LJZdL17lhWy',
+  '$2a$10$07Mj3rVkJ0mpGhatL2OyBOwsmD7SAHaIlu8khchBxKxiFfGl2A4B6',
   'Елена Волкова',
   'applicant'
 ) ON CONFLICT DO NOTHING;
@@ -899,7 +899,7 @@ INSERT INTO users (id, email, password_hash, display_name, role)
 VALUES (
   '00000000-0000-4000-8000-000000000004',
   'curator@tramplin.ru',
-  '$2a$10$N9qo8uLOickgx2ZMRZoMyeIjZAgcfl7p92ldGxad68LJZdL17lhWy',
+  '$2a$10$07Mj3rVkJ0mpGhatL2OyBOwsmD7SAHaIlu8khchBxKxiFfGl2A4B6',
   'Куратор платформы',
   'curator'
 )
@@ -938,14 +938,14 @@ DELETE FROM employer_profiles;
 DELETE FROM users;
 
 INSERT INTO users (id, email, password_hash, display_name, role) VALUES
-('00000000-0000-4000-8000-000000000001','admin@tramplin.ru','$2a$10$N9qo8uLOickgx2ZMRZoMyeIjZAgcfl7p92ldGxad68LJZdL17lhWy','Куратор платформы','curator'),
-('00000000-0000-4000-8000-000000000004','curator@tramplin.ru','$2a$10$N9qo8uLOickgx2ZMRZoMyeIjZAgcfl7p92ldGxad68LJZdL17lhWy','Куратор платформы','curator'),
-('00000000-0000-4000-8000-000000000002','hr@techcorp.ru','$2a$10$N9qo8uLOickgx2ZMRZoMyeIjZAgcfl7p92ldGxad68LJZdL17lhWy','HR ТехКорп','employer'),
-('00000000-0000-4000-8000-000000000003','hr@greenstart.ru','$2a$10$N9qo8uLOickgx2ZMRZoMyeIjZAgcfl7p92ldGxad68LJZdL17lhWy','HR ГринСтарт','employer'),
-('00000000-0000-4000-8000-000000000010','ivan@mail.ru','$2a$10$N9qo8uLOickgx2ZMRZoMyeIjZAgcfl7p92ldGxad68LJZdL17lhWy','Иван Петров','applicant'),
-('00000000-0000-4000-8000-000000000011','maria@mail.ru','$2a$10$N9qo8uLOickgx2ZMRZoMyeIjZAgcfl7p92ldGxad68LJZdL17lhWy','Мария Сидорова','applicant'),
-('00000000-0000-4000-8000-000000000012','alex@mail.ru','$2a$10$N9qo8uLOickgx2ZMRZoMyeIjZAgcfl7p92ldGxad68LJZdL17lhWy','Александр Козлов','applicant'),
-('00000000-0000-4000-8000-000000000013','elena@mail.ru','$2a$10$N9qo8uLOickgx2ZMRZoMyeIjZAgcfl7p92ldGxad68LJZdL17lhWy','Елена Волкова','applicant');
+('00000000-0000-4000-8000-000000000001','admin@tramplin.ru','$2a$10$07Mj3rVkJ0mpGhatL2OyBOwsmD7SAHaIlu8khchBxKxiFfGl2A4B6','Куратор платформы','curator'),
+('00000000-0000-4000-8000-000000000004','curator@tramplin.ru','$2a$10$07Mj3rVkJ0mpGhatL2OyBOwsmD7SAHaIlu8khchBxKxiFfGl2A4B6','Куратор платформы','curator'),
+('00000000-0000-4000-8000-000000000002','hr@techcorp.ru','$2a$10$07Mj3rVkJ0mpGhatL2OyBOwsmD7SAHaIlu8khchBxKxiFfGl2A4B6','HR ТехКорп','employer'),
+('00000000-0000-4000-8000-000000000003','hr@greenstart.ru','$2a$10$07Mj3rVkJ0mpGhatL2OyBOwsmD7SAHaIlu8khchBxKxiFfGl2A4B6','HR ГринСтарт','employer'),
+('00000000-0000-4000-8000-000000000010','ivan@mail.ru','$2a$10$07Mj3rVkJ0mpGhatL2OyBOwsmD7SAHaIlu8khchBxKxiFfGl2A4B6','Иван Петров','applicant'),
+('00000000-0000-4000-8000-000000000011','maria@mail.ru','$2a$10$07Mj3rVkJ0mpGhatL2OyBOwsmD7SAHaIlu8khchBxKxiFfGl2A4B6','Мария Сидорова','applicant'),
+('00000000-0000-4000-8000-000000000012','alex@mail.ru','$2a$10$07Mj3rVkJ0mpGhatL2OyBOwsmD7SAHaIlu8khchBxKxiFfGl2A4B6','Александр Козлов','applicant'),
+('00000000-0000-4000-8000-000000000013','elena@mail.ru','$2a$10$07Mj3rVkJ0mpGhatL2OyBOwsmD7SAHaIlu8khchBxKxiFfGl2A4B6','Елена Волкова','applicant');
 
 INSERT INTO employer_profiles (user_id, company_name, description, industry, website, inn, verified) VALUES
 ('00000000-0000-4000-8000-000000000002','ТехКорп','Разработка корпоративных IT-решений и облачных сервисов.','IT / Разработка ПО','https://techcorp.ru','7707123456',true),
@@ -1002,6 +1002,32 @@ INSERT INTO recommendations (from_user_id, to_user_id, opportunity_id, message) 
 ('00000000-0000-4000-8000-000000000011','00000000-0000-4000-8000-000000000013','10000000-0000-4000-8000-000000000006','Лена, тебе будет интересна эта позиция дизайнера в ГринСтарт.'),
 ('00000000-0000-4000-8000-000000000012','00000000-0000-4000-8000-000000000010','10000000-0000-4000-8000-000000000003','Ваня, ты же DevOps увлекаешься — вот классная позиция в Казани!'),
 ('00000000-0000-4000-8000-000000000013','00000000-0000-4000-8000-000000000011','10000000-0000-4000-8000-000000000009','Маша, посмотри вакансию контент-менеджера — идеально для тебя!');
+`,
+
+	"0006_contacts_v2.sql": `CREATE TABLE IF NOT EXISTS contact_requests (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  from_user_id uuid NOT NULL REFERENCES users (id) ON DELETE CASCADE,
+  to_user_id uuid NOT NULL REFERENCES users (id) ON DELETE CASCADE,
+  status text NOT NULL DEFAULT 'pending',
+  created_at timestamptz NOT NULL DEFAULT now(),
+  updated_at timestamptz NOT NULL DEFAULT now(),
+  CHECK (from_user_id <> to_user_id),
+  CONSTRAINT contact_requests_unique UNIQUE (from_user_id, to_user_id)
+);
+
+CREATE INDEX IF NOT EXISTS idx_contact_requests_to ON contact_requests (to_user_id, status);
+CREATE INDEX IF NOT EXISTS idx_contact_requests_from ON contact_requests (from_user_id);
+
+ALTER TABLE recommendations ADD COLUMN IF NOT EXISTS viewed boolean NOT NULL DEFAULT false;
+
+CREATE TABLE IF NOT EXISTS favorites (
+  user_id uuid NOT NULL REFERENCES users (id) ON DELETE CASCADE,
+  opportunity_id uuid NOT NULL REFERENCES opportunities (id) ON DELETE CASCADE,
+  created_at timestamptz NOT NULL DEFAULT now(),
+  PRIMARY KEY (user_id, opportunity_id)
+);
+
+CREATE INDEX IF NOT EXISTS idx_favorites_user ON favorites (user_id);
 `,
 }
 
