@@ -1,75 +1,123 @@
-# Трамплин — карьерная экосистема
+<div align="center">
 
-Веб-платформа для студентов, выпускников и работодателей. Поиск стажировок, вакансий, менторства и мероприятий на интерактивной карте России.
+# Трамплин
 
-**Стек:** Next.js 15 · Go (chi) · PostgreSQL 16 · Docker Compose · Яндекс Карты
+**Карьерная экосистема для студентов, выпускников и работодателей**
+
+Поиск стажировок, вакансий, менторских программ и карьерных мероприятий — с интерактивной картой и личными кабинетами.
+
+[![Next.js](https://img.shields.io/badge/Next.js-15-black?style=flat-square&logo=next.js)](https://nextjs.org/)
+[![Go](https://img.shields.io/badge/Go-1.23-00ADD8?style=flat-square&logo=go)](https://go.dev/)
+[![PostgreSQL](https://img.shields.io/badge/PostgreSQL-16-4169E1?style=flat-square&logo=postgresql)](https://www.postgresql.org/)
+[![Docker](https://img.shields.io/badge/Docker-Compose-2496ED?style=flat-square&logo=docker)](https://docs.docker.com/compose/)
+
+</div>
+
+---
+
+## Содержание
+
+- [О проекте](#о-проекте)
+- [Команда разработки](#команда-разработки)
+- [Возможности](#возможности)
+- [Быстрый старт (Docker)](#быстрый-старт-docker)
+- [Сервисы после запуска](#сервисы-после-запуска)
+- [Тестовые аккаунты](#тестовые-аккаунты)
+- [Запуск без Docker](#запуск-без-docker-разработка)
+- [Структура репозитория](#структура-репозитория)
+- [Роли и навигация](#роли-пользователей)
+- [API](#api-эндпоинты)
+- [Переменные окружения](#переменные-окружения)
+- [Технологии](#технологии)
+
+---
+
+## О проекте
+
+**Трамплин** — веб-платформа, объединяющая соискателей и компании: публикация и модерация карточек возможностей, отклики с резюме, профессиональная сеть и рекомендации вакансий между контактами, верификация работодателей и панель куратора с аналитикой.
+
+Карточки поддерживают типы: стажировка, вакансия (Junior / Middle+), менторская программа, мероприятие. Геолокация отображается на **Яндекс.Картах** (светлая/тёмная тема в зависимости от настроек приложения).
+
+---
+
+## Команда разработки
+
+Проект выполнен командой **VIPERRRS**.
+
+| Участник | Роль в команде |
+|----------|----------------|
+| **Уразаев Р. Г.** | Разработка |
+| **Кузнецов В. Г.** | Разработка |
+| **Адигамов И. В.** | Разработка |
+
+---
+
+## Возможности
+
+| Аудитория | Что доступно |
+|-----------|----------------|
+| **Гость** | Лента и карта возможностей, фильтры по городу, типу и формату работы |
+| **Соискатель** | Профиль и резюме, отклики, избранное, контакты и заявки, рекомендации от друзей, настройки приватности |
+| **Работодатель** | Профиль компании и логотип, карточки (после верификации — с модерацией), отклики и статусы, статистика |
+| **Куратор** | Верификация компаний, модерация карточек, пользователи (CRUD, роли), все карточки с пагинацией, экспорт статистики, **Grafana** с дашбордом по БД |
 
 ---
 
 ## Быстрый старт (Docker)
 
-> Требуется: [Docker Desktop](https://www.docker.com/products/docker-desktop/) (Windows/macOS) или Docker + Docker Compose (Linux).
+Требуется установленный **[Docker Desktop](https://www.docker.com/products/docker-desktop/)** (Windows / macOS) или Docker + Compose (Linux).
 
 ```bash
-# 1. Клонируйте репозиторий и перейдите в папку проекта
-cd IT_Planet2026_VIPERRRS-main
+# Перейдите в корень репозитория
+cd VIPERRRS_delaem
 
-# 2. Запустите всё одной командой
+# Соберите и запустите все сервисы
 docker compose up --build
 ```
 
-Дождитесь строк в логах:
+В логах дождитесь готовности сервисов, например:
 
-```
+```text
 tramplin-backend   | tramplin-api listening on :8080
-tramplin-frontend  | ✓ Ready in ...ms
+tramplin-frontend  | ✓ Ready in …ms
 ```
 
-Откройте в браузере:
+### Что происходит при первом запуске
 
-| Сервис | URL |
-|--------|-----|
-| Сайт (фронтенд) | http://localhost:3000 |
-| API (бэкенд) | http://localhost:8080/health |
+1. **PostgreSQL** — при пустом volume выполняются скрипты из `backend/internal/db/init-scripts/` (`01-schema.sql`, `02-seed.sql`).
+2. **Backend** — подключается к БД и применяет миграции из `backend/internal/db/migrations/`. Миграция **0005_reseed.sql** при необходимости актуализирует seed-данные.
+3. **Frontend** — обращается к API по адресу из `NEXT_PUBLIC_API_BASE_URL`.
+4. **Grafana** — поднимается с провижингом датасорса PostgreSQL и готовым дашбордом (см. каталог `grafana/provisioning/`).
 
-### Что происходит при запуске
-
-1. **PostgreSQL** стартует. При **первом** запуске (когда volume пуст) выполняет скрипты из `backend/internal/db/init-scripts/`:
-   - `01-schema.sql` — создаёт таблицы, индексы, типы данных
-   - `02-seed.sql` — заполняет базу данными (пользователи, вакансии, отклики, рекомендации)
-2. **Backend** (Go) подключается к PostgreSQL и прогоняет миграции из `backend/internal/db/migrations/` (0001–0005). Миграция **0005_reseed.sql** гарантированно заполняет БД актуальными данными, даже если volume уже существовал.
-3. **Frontend** (Next.js) стартует и обращается к backend по `http://localhost:8080/api/v1`
-
-> **Важно:** Данные загружаются автоматически при каждом запуске backend-а. Если миграция `0005_reseed.sql` ещё не была применена, она выполнится и заполнит/обновит все таблицы.
-
-### Пересоздание базы данных с нуля
-
-Если нужно полностью сбросить базу:
+### Сброс базы данных
 
 ```bash
-# Остановить контейнеры и удалить volume с данными
 docker compose down -v
-
-# Запустить заново — БД создастся с нуля
 docker compose up --build
 ```
 
-### Обновление данных без сброса volume
+---
 
-При обычном `docker compose up --build` бэкенд автоматически применит все новые миграции. Миграция `0005_reseed.sql` очистит и перезальёт seed-данные, если она ещё не была применена.
+## Сервисы после запуска
+
+| Сервис | URL | Примечание |
+|--------|-----|------------|
+| Веб-приложение | [http://localhost:3000](http://localhost:3000) | Next.js |
+| API | [http://localhost:8080/health](http://localhost:8080/health) | Проверка живости |
+| Grafana | [http://localhost:3001](http://localhost:3001) | Логин: `admin`, пароль: `tramplin` (см. `docker-compose.yml`) |
+| PostgreSQL | `localhost:5432` | Пользователь / БД: `tramplin` |
 
 ---
 
 ## Тестовые аккаунты
 
-Все пароли: **`password123`**
+Пароль для всех учётных записей из seed: **`password123`**
 
-| Роль | Имя | Email |
-|------|-----|-------|
-| Куратор платформы | Администратор | `admin@tramplin.ru` |
-| Куратор платформы | Куратор | `curator@tramplin.ru` |
-| Работодатель (ТехКорп) | HR ТехКорп | `hr@techcorp.ru` |
-| Работодатель (ГринСтарт) | HR ГринСтарт | `hr@greenstart.ru` |
+| Роль | Описание | Email |
+|------|----------|-------|
+| Куратор платформы | Полный доступ к админ-функциям | `curator@tramplin.ru` |
+| Работодатель | ТехКорп | `hr@techcorp.ru` |
+| Работодатель | ГринСтарт | `hr@greenstart.ru` |
 | Соискатель | Иван Петров | `ivan@mail.ru` |
 | Соискатель | Мария Сидорова | `maria@mail.ru` |
 | Соискатель | Александр Козлов | `alex@mail.ru` |
@@ -79,16 +127,12 @@ docker compose up --build
 
 ## Запуск без Docker (разработка)
 
-### 1. PostgreSQL
-
-Установите PostgreSQL 16 и создайте базу:
+### 1. PostgreSQL 16
 
 ```sql
 CREATE USER tramplin WITH PASSWORD 'tramplin';
 CREATE DATABASE tramplin OWNER tramplin;
 ```
-
-Примените схему и данные:
 
 ```bash
 psql -U tramplin -d tramplin -f backend/internal/db/init-scripts/01-schema.sql
@@ -99,63 +143,50 @@ psql -U tramplin -d tramplin -f backend/internal/db/init-scripts/02-seed.sql
 
 ```bash
 cd backend
-
-# Создайте .env (или используйте существующий)
-# DATABASE_URL=postgres://tramplin:tramplin@localhost:5432/tramplin?sslmode=disable
-# HTTP_ADDR=:8080
-# JWT_SECRET=change-me-in-production-min-32-chars-long
-# CORS_ORIGINS=http://localhost:3000
-
+# Скопируйте backend/.env.example в .env и при необходимости поправьте значения
 go run ./cmd/api
 ```
 
-Проверка: http://localhost:8080/health
+Проверка: [http://localhost:8080/health](http://localhost:8080/health)
 
 ### 3. Frontend
 
 ```bash
 cd frontend
-
 npm install
-
-# Создайте .env.local (или используйте существующий)
-# NEXT_PUBLIC_API_BASE_URL=http://localhost:8080/api/v1
-# NEXT_PUBLIC_YANDEX_MAPS_API_KEY=f0e8de45-f741-497b-bf91-92d52a17b41c
-
+# Скопируйте frontend/.env.example в .env.local
 npm run dev
 ```
 
-Откройте: http://localhost:3000
+Откройте [http://localhost:3000](http://localhost:3000).
 
 ---
 
-## Структура проекта
+## Структура репозитория
 
-```
+```text
 ├── backend/
-│   ├── cmd/api/              # Точка входа Go-сервера
+│   ├── cmd/api/                 # Точка входа API
 │   ├── internal/
-│   │   ├── config/           # Конфигурация из переменных окружения
-│   │   ├── db/               # Миграции и init-scripts
-│   │   │   ├── migrations/   # SQL-миграции (применяются Go-кодом)
-│   │   │   └── init-scripts/ # SQL для Docker PostgreSQL (при первом запуске)
-│   │   ├── domain/           # Доменные модели (User, Opportunity и др.)
-│   │   ├── httpapi/          # HTTP-маршруты, middleware, handlers
-│   │   ├── repository/       # Работа с PostgreSQL
-│   │   └── service/          # Бизнес-логика (auth, opportunities)
+│   │   ├── config/
+│   │   ├── db/                  # migrations/, init-scripts/
+│   │   ├── domain/
+│   │   ├── httpapi/             # router, middleware, handlers
+│   │   ├── repository/
+│   │   └── service/
 │   ├── Dockerfile
-│   ├── go.mod / go.sum
-│   └── .env
+│   └── go.mod
 ├── frontend/
 │   ├── src/
-│   │   ├── app/              # Next.js App Router (страницы)
-│   │   ├── components/       # UI-компоненты
-│   │   ├── contexts/         # React Context (auth)
-│   │   ├── hooks/            # Хуки (useToast, useFavorites)
-│   │   └── lib/              # API-клиент, типы, утилиты
-│   ├── public/fonts/         # Шрифт CHETTY.ttf
-│   ├── Dockerfile
-│   └── .env.local
+│   │   ├── app/                 # App Router
+│   │   ├── components/
+│   │   ├── contexts/
+│   │   ├── hooks/
+│   │   └── lib/
+│   ├── public/
+│   └── Dockerfile
+├── grafana/
+│   └── provisioning/          # Датасорсы и дашборды Grafana
 ├── docker-compose.yml
 └── README.md
 ```
@@ -166,113 +197,118 @@ npm run dev
 
 | Роль | Возможности |
 |------|-------------|
-| **Гость** | Просмотр карты и ленты вакансий. Для взаимодействия нужна регистрация. |
-| **Соискатель** | Заполнение профиля и резюме, отклики на вакансии, рекомендации контактам, нетворкинг. |
-| **Работодатель** | Управление профилем компании, создание карточек возможностей (с адресом на карте и изображением), просмотр откликов, статистика. |
-| **Куратор платформы** | Верификация компаний, модерация карточек возможностей, панель управления со статистикой. |
+| **Гость** | Просмотр карты и ленты; регистрация для откликов и кабинета |
+| **Соискатель** | Профиль, резюме, отклики, избранное, контакты, рекомендации, приватность |
+| **Работодатель** | Компания, карточки (после верификации, с модерацией), отклики, статистика |
+| **Куратор** | Верификация компаний, модерация карточек, пользователи, экспорт, Grafana |
 
----
+### Навигация по разделам
 
-## Навигация по сайту
+**Соискатель:** главная `/`, отклики `/applicant/applications`, контакты `/applicant/contacts` (в т.ч. рекомендации), кабинет `/dashboard`.
 
-### Соискатель (студент / выпускник)
-- **Главная** `/` — карта и лента возможностей
-- **Мои отклики** `/applicant/applications` — статусы откликов
-- **Рекомендации** `/applicant/recommendations` — входящие рекомендации от контактов
-- **Контакты** `/applicant/contacts` — профессиональная сеть
-- **Кабинет** `/dashboard` — профиль, резюме, настройки приватности
+**Работодатель:** главная `/`, карточки `/employer/opportunities`, создание `/employer/opportunities/new`, отклики `/employer/applications`, статистика `/employer/stats`, компания `/employer/company`.
 
-### Работодатель
-- **Главная** `/` — карта и лента
-- **Мои карточки** `/employer/opportunities` — управление вакансиями
-- **Создать карточку** `/employer/opportunities/new` — новая вакансия/стажировка
-- **Отклики** `/employer/applications` — отклики соискателей
-- **Статистика** `/employer/stats` — графики по откликам
-- **Компания** `/employer/company` — профиль компании
-
-### Куратор платформы
-- **Главная** `/`
-- **Панель управления** `/admin/dashboard` — статистика, модерация компаний и карточек
+**Куратор:** главная `/`, дашборд `/admin/dashboard`, пользователи `/admin/users`, карточки `/admin/opportunities`, ссылка на Grafana с дашборда.
 
 ---
 
 ## API-эндпоинты
 
+Базовый префикс: **`/api/v1`**.
+
 ### Публичные
+
 | Метод | Путь | Описание |
 |-------|------|----------|
-| GET | `/api/v1/opportunities` | Список возможностей |
-| GET | `/api/v1/opportunities/{id}` | Детали возможности |
+| GET | `/opportunities` | Список возможностей |
+| GET | `/opportunities/{id}` | Детали возможности |
 
 ### Авторизация
-| Метод | Путь | Описание |
-|-------|------|----------|
-| POST | `/api/v1/auth/register` | Регистрация |
-| POST | `/api/v1/auth/login` | Вход |
-| POST | `/api/v1/auth/logout` | Выход |
-| POST | `/api/v1/auth/refresh` | Обновление токена |
-| GET | `/api/v1/auth/me` | Текущий пользователь |
 
-### Соискатель
 | Метод | Путь | Описание |
 |-------|------|----------|
-| GET | `/api/v1/applicant/applications` | Мои отклики |
-| POST | `/api/v1/applicant/applications` | Откликнуться |
-| PATCH | `/api/v1/applicant/profile` | Обновить профиль / резюме |
-| PATCH | `/api/v1/applicant/privacy` | Настройки приватности |
-| GET | `/api/v1/applicant/contacts` | Список контактов |
-| POST | `/api/v1/applicant/contacts` | Добавить контакт |
-| POST | `/api/v1/applicant/recommendations` | Отправить рекомендацию |
-| GET | `/api/v1/applicant/recommendations/inbox` | Входящие рекомендации |
+| POST | `/auth/register` | Регистрация |
+| POST | `/auth/login` | Вход |
+| POST | `/auth/logout` | Выход |
+| POST | `/auth/refresh` | Обновление токена |
+| GET | `/auth/me` | Текущий пользователь |
 
-### Работодатель
-| Метод | Путь | Описание |
-|-------|------|----------|
-| GET | `/api/v1/employer/opportunities` | Мои карточки |
-| POST | `/api/v1/employer/opportunities` | Создать карточку |
-| GET | `/api/v1/employer/applications` | Отклики на карточки |
-| PATCH | `/api/v1/employer/applications/{id}` | Изменить статус отклика |
-| PATCH | `/api/v1/employer/profile` | Обновить профиль компании |
+### Соискатель (фрагмент)
 
-### Куратор
 | Метод | Путь | Описание |
 |-------|------|----------|
-| GET | `/api/v1/curator/companies/pending` | Компании на верификации |
-| PATCH | `/api/v1/curator/companies/{id}/verification` | Верифицировать / отклонить |
-| GET | `/api/v1/curator/opportunities/pending` | Карточки на модерации |
-| PATCH | `/api/v1/curator/opportunities/{id}/status` | Одобрить / отклонить |
-| GET | `/api/v1/admin/stats` | Статистика платформы |
-| GET | `/api/v1/admin/timeline` | Таймлайн активности |
+| GET/POST | `/applicant/applications` | Список откликов / создать отклик |
+| PATCH | `/applicant/profile` | Профиль и резюме |
+| PATCH | `/applicant/privacy` | Приватность |
+| GET | `/applicant/contacts` | Контакты |
+| GET | `/applicant/favorites` | Избранное на сервере |
+
+Полный набор методов см. в `backend/internal/httpapi/router.go`.
+
+### Работодатель (фрагмент)
+
+| Метод | Путь | Описание |
+|-------|------|----------|
+| GET/POST | `/employer/opportunities` | Список / создать карточку |
+| GET | `/employer/applications` | Отклики |
+| PATCH | `/employer/applications/{id}` | Статус отклика |
+| PATCH | `/employer/profile` | Профиль компании (в т.ч. логотип) |
+
+### Куратор и админ-статистика
+
+| Метод | Путь | Описание |
+|-------|------|----------|
+| GET | `/curator/companies/pending` | Компании на верификации |
+| PATCH | `/curator/companies/{id}/verification` | Верификация |
+| GET | `/curator/opportunities/pending` | Карточки на модерации |
+| PATCH | `/curator/opportunities/{id}/status` | Статус модерации |
+| GET | `/admin/stats` | Сводная статистика |
+| GET | `/admin/timeline` | Таймлайн активности |
+| GET | `/admin/export?format=csv\|json` | Экспорт метрик |
+| GET/POST/PATCH/DELETE | `/admin/users` … | Управление пользователями |
+| GET/DELETE | `/admin/opportunities` … | Список и удаление карточек |
 
 ---
 
 ## Переменные окружения
 
 ### Backend (`backend/.env`)
-| Переменная | Значение по умолчанию | Описание |
-|------------|----------------------|----------|
-| `HTTP_ADDR` | `:8080` | Адрес сервера |
-| `DATABASE_URL` | `postgres://tramplin:tramplin@localhost:5432/tramplin?sslmode=disable` | Подключение к PostgreSQL |
-| `JWT_SECRET` | `change-me-in-production-min-32-chars-long` | Секрет JWT-токенов |
-| `CORS_ORIGINS` | `http://localhost:3000` | Разрешённые Origins |
+
+| Переменная | Описание |
+|------------|----------|
+| `HTTP_ADDR` | Адрес прослушивания (например `:8080`) |
+| `DATABASE_URL` | Строка подключения PostgreSQL |
+| `JWT_SECRET` | Секрет для подписи JWT |
+| `CORS_ORIGINS` | Разрешённые origin для CORS |
 
 ### Frontend (`frontend/.env.local`)
-| Переменная | Значение по умолчанию | Описание |
-|------------|----------------------|----------|
-| `NEXT_PUBLIC_API_BASE_URL` | `http://localhost:8080/api/v1` | URL API бэкенда |
-| `NEXT_PUBLIC_YANDEX_MAPS_API_KEY` | `f0e8de45-f741-497b-bf91-92d52a17b41c` | Ключ Яндекс Карт |
+
+| Переменная | Описание |
+|------------|----------|
+| `NEXT_PUBLIC_API_BASE_URL` | URL API (например `http://localhost:8080/api/v1`) |
+| `NEXT_PUBLIC_YANDEX_MAPS_API_KEY` | Ключ JavaScript API Яндекс.Карт |
+
+Примеры значений — в `backend/.env.example` и `frontend/.env.example`.
 
 ---
 
 ## Технологии
 
-| Компонент | Технология |
-|-----------|-----------|
+| Слой | Стек |
+|------|------|
 | Frontend | Next.js 15, React 19, TypeScript, Tailwind CSS |
-| Backend | Go 1.23, chi/v5, pgx/v5, JWT |
-| База данных | PostgreSQL 16 |
-| Карты | Яндекс Карты JavaScript API 2.1 |
-| Контейнеризация | Docker, Docker Compose |
-| Графики | Chart.js, react-chartjs-2 |
-| Иконки | Hugeicons, Lucide React |
-| Анимации | Framer Motion |
+| Backend | Go 1.23, chi, pgx, JWT |
+| БД | PostgreSQL 16 |
+| Карты | Яндекс Карты API 2.1 |
+| Контейнеры | Docker, Docker Compose |
+| Графики (ЛК) | Chart.js, react-chartjs-2 |
+| Аналитика (опционально) | Grafana + PostgreSQL |
+| UI | Hugeicons, Lucide, Framer Motion |
+
+---
+
+<div align="center">
+
+**Трамплин** · команда **VIPERRRS**
+
+</div>
