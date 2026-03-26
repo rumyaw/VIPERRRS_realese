@@ -14,7 +14,7 @@ func NewPool(ctx context.Context, databaseURL string) (*pgxpool.Pool, error) {
 		return nil, fmt.Errorf("parse database url: %w", err)
 	}
 	cfg.MaxConns = 25
-	cfg.MinConns = 2
+	cfg.MinConns = 0
 	cfg.MaxConnLifetime = time.Hour
 	cfg.MaxConnIdleTime = 15 * time.Minute
 	cfg.HealthCheckPeriod = time.Minute
@@ -23,9 +23,15 @@ func NewPool(ctx context.Context, databaseURL string) (*pgxpool.Pool, error) {
 	if err != nil {
 		return nil, fmt.Errorf("connect postgres: %w", err)
 	}
-	if err := pool.Ping(ctx); err != nil {
-		pool.Close()
-		return nil, fmt.Errorf("ping postgres: %w", err)
+	// Даём БД время подняться при cold-start (docker/local).
+	var pingErr error
+	for i := 0; i < 15; i++ {
+		pingErr = pool.Ping(ctx)
+		if pingErr == nil {
+			return pool, nil
+		}
+		time.Sleep(time.Second)
 	}
-	return pool, nil
+	pool.Close()
+	return nil, fmt.Errorf("ping postgres: %w", pingErr)
 }

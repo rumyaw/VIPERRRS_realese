@@ -6,8 +6,8 @@ export function roleLabelRu(role: UserRole): string {
       return "Студент / выпускник";
     case "employer":
       return "Работодатель";
-    case "admin":
-      return "Администратор";
+    case "curator":
+      return "Куратор платформы";
     default:
       return role;
   }

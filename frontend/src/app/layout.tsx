@@ -16,17 +16,18 @@ const geistMono = Geist_Mono({
   subsets: ["latin", "cyrillic"],
 });
 
+
 export const metadata: Metadata = {
   title: "Трамплин — карьерная платформа",
   description:
     "Экосистема для студентов, выпускников и работодателей: вакансии, стажировки, менторство и мероприятия на карте.",
-  icons: { icon: "/public/images/logo.png" },
+  icons: { icon: "/images/logo.png" },
 };
 
 export const viewport: Viewport = {
   themeColor: [
-    { media: "(prefers-color-scheme: light)", color: "#f0f4ff" },
-    { media: "(prefers-color-scheme: dark)", color: "#050810" },
+    { media: "(prefers-color-scheme: light)", color: "#FDF8F0" },
+    { media: "(prefers-color-scheme: dark)", color: "#03060f" },
   ],
 };
 

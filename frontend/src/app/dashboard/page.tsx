@@ -5,9 +5,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect } from "react";
 import { useAuth } from "@/contexts/auth-context";
-import { AdminCabinet } from "@/components/dashboard/AdminCabinet";
 import { ApplicantCabinet } from "@/components/dashboard/ApplicantCabinet";
-import { EmployerCabinet } from "@/components/dashboard/EmployerCabinet";
 import { GlassPanel } from "@/components/ui/GlassPanel";
 import { roleLabelRu } from "@/lib/role-labels";
 
@@ -16,13 +14,38 @@ export default function DashboardPage() {
   const router = useRouter();
 
   useEffect(() => {
-    if (!user) router.replace("/login");
+    if (!user) {
+      router.replace("/login");
+      return;
+    }
+    if (user.role === "curator") {
+      router.replace("/admin/dashboard");
+    }
+    if (user.role === "employer") {
+      router.replace("/employer/company");
+    }
   }, [user, router]);
 
   if (!user) {
     return (
       <GlassPanel className="p-8 text-center">
         <p className="text-[var(--text-secondary)]">Перенаправление на вход…</p>
+      </GlassPanel>
+    );
+  }
+
+  if (user.role === "curator") {
+    return (
+      <GlassPanel className="p-8 text-center">
+        <p className="text-[var(--text-secondary)]">Перенаправление в панель администратора…</p>
+      </GlassPanel>
+    );
+  }
+
+  if (user.role === "employer") {
+    return (
+      <GlassPanel className="p-8 text-center">
+        <p className="text-[var(--text-secondary)]">Перенаправление в профиль компании…</p>
       </GlassPanel>
     );
   }
@@ -42,8 +65,6 @@ export default function DashboardPage() {
       </div>
 
       {user.role === "applicant" && <ApplicantCabinet />}
-      {user.role === "employer" && <EmployerCabinet />}
-      {user.role === "admin" && <AdminCabinet />}
     </motion.div>
   );
 }

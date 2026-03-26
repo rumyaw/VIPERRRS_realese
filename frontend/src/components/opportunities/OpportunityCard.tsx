@@ -40,7 +40,7 @@ export function OpportunityCard({
     >
       <GlassPanel
         className={cn(
-          "group relative overflow-hidden p-5 transition-shadow hover:shadow-lg",
+          "group relative flex h-full flex-col overflow-hidden p-5 transition-shadow hover:shadow-lg",
           favorite && "ring-1 ring-[color-mix(in_srgb,var(--brand-orange)_55%,transparent)]",
         )}
       >
@@ -66,7 +66,7 @@ export function OpportunityCard({
             </span>
           </div>
         </div>
-        <p className="mt-3 line-clamp-3 text-sm text-[var(--text-secondary)]">
+        <p className="mt-3 line-clamp-3 flex-grow text-sm text-[var(--text-secondary)]">
           {opp.shortDescription}
         </p>
         <div className="mt-4 flex flex-wrap gap-2">
@@ -90,7 +90,7 @@ export function OpportunityCard({
             <span>Компенсация не указана</span>
           )}
         </div>
-        <div className="mt-4 flex flex-wrap gap-2">
+        <div className="mt-auto flex flex-wrap gap-2 pt-4">
           <Link
             href={`/opportunities/${opp.id}`}
             className="inline-flex flex-1 items-center justify-center rounded-xl bg-[linear-gradient(135deg,var(--brand-magenta),var(--brand-orange))] px-4 py-2.5 text-center text-sm font-semibold text-white shadow-md transition hover:opacity-95 min-[420px]:flex-none"

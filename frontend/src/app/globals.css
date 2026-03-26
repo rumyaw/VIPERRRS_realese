@@ -1,25 +1,37 @@
 @import "tailwindcss";
 
+@font-face {
+  font-family: 'Chetty';
+  src: url('/fonts/CHETTY.ttf') format('truetype');
+  font-weight: normal;
+  font-style: normal;
+  font-display: swap;
+}
+
 :root {
-  --brand-orange: #ff8c00;
+  --brand-orange: #C65D3B;
+  --brand-warm: #F1E3C6;
   --brand-magenta: #e6007e;
   --brand-cyan: #00d4ff;
   --brand-navy: #0a1628;
   --brand-purple: #6b21a8;
 
-  --glass-bg: rgba(255, 255, 255, 0.08);
-  --glass-bg-strong: rgba(255, 255, 255, 0.14);
-  --glass-border: rgba(255, 255, 255, 0.22);
-  --glass-shadow: 0 8px 32px rgba(0, 0, 0, 0.12);
+  --glass-bg: rgba(241, 227, 198, 0.35);
+  --glass-bg-strong: rgba(241, 227, 198, 0.52);
+  --glass-border: rgba(198, 93, 59, 0.18);
+  --glass-shadow: 0 8px 32px rgba(140, 80, 40, 0.10);
   --glass-blur: 18px;
-  --text-primary: #0f172a;
-  --text-secondary: rgba(15, 23, 42, 0.72);
-  --page-bg: #eef2ff;
-  --gradient-orb-1: rgba(255, 140, 0, 0.42);
-  --gradient-orb-2: rgba(0, 212, 255, 0.32);
-  --gradient-orb-3: rgba(230, 0, 126, 0.26);
-  --gradient-orb-4: rgba(99, 102, 241, 0.22);
-  --mesh-line: rgba(255, 255, 255, 0.14);
+  --text-primary: #2d1a0e;
+  --text-secondary: rgba(45, 26, 14, 0.68);
+  --page-bg: #FDF8F0;
+  --bg-card: #F1E3C6;
+  --gradient-text: linear-gradient(90deg, #C65D3B, #F1E3C6);
+  --gradient-orb-1: rgba(198, 93, 59, 0.30);
+  --gradient-orb-2: rgba(241, 227, 198, 0.40);
+  --gradient-orb-3: rgba(198, 93, 59, 0.16);
+  --gradient-orb-4: rgba(241, 195, 130, 0.22);
+  --mesh-line: rgba(198, 93, 59, 0.08);
+  --font-display: 'Chetty', sans-serif;
 }
 
 .dark {
@@ -30,16 +42,19 @@
   --text-primary: #f8fafc;
   --text-secondary: rgba(248, 250, 252, 0.72);
   --page-bg: #03060f;
-  --gradient-orb-1: rgba(255, 140, 0, 0.22);
+  --bg-card: #1a1520;
+  --gradient-text: linear-gradient(90deg, #e07050, #F1E3C6);
+  --gradient-orb-1: rgba(198, 93, 59, 0.22);
   --gradient-orb-2: rgba(107, 33, 168, 0.42);
-  --gradient-orb-3: rgba(230, 0, 126, 0.22);
-  --gradient-orb-4: rgba(14, 165, 233, 0.14);
+  --gradient-orb-3: rgba(224, 112, 80, 0.18);
+  --gradient-orb-4: rgba(241, 227, 198, 0.10);
   --mesh-line: rgba(255, 255, 255, 0.06);
 }
 
 @theme inline {
   --font-sans: var(--font-geist-sans), ui-sans-serif, system-ui, sans-serif;
   --font-mono: var(--font-geist-mono), ui-monospace, monospace;
+  --font-display: var(--font-display), ui-sans-serif, system-ui, sans-serif;
 }
 
 html {
@@ -53,7 +68,7 @@ body {
 }
 
 ::selection {
-  background: color-mix(in srgb, var(--brand-magenta) 35%, transparent);
+  background: color-mix(in srgb, var(--brand-orange) 35%, transparent);
 }
 
 .glass-panel {
@@ -81,10 +96,73 @@ body {
   border: 1px solid var(--glass-border);
   border-radius: 0.875rem;
   color: var(--text-primary);
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+
+.glass-input:focus {
+  outline: none;
+  border-color: var(--brand-orange);
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--brand-orange) 22%, transparent);
 }
 
 .glass-input::placeholder {
   color: var(--text-secondary);
+}
+
+/* Стили для выпадающих списков */
+.glass-select {
+  background: var(--page-bg);
+  border: 1px solid var(--glass-border);
+  border-radius: 0.875rem;
+  color: var(--text-primary);
+  appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24' fill='none' stroke='%23888' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 12px center;
+  background-size: 16px;
+  padding-right: 40px;
+  cursor: pointer;
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+
+.glass-select:focus {
+  outline: none;
+  border-color: var(--brand-orange);
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--brand-orange) 22%, transparent);
+}
+
+/*
+ * Native <option> styling is limited cross-browser (Firefox supports background/color,
+ * Chrome/Safari largely ignore it). For fully consistent styling, consider replacing
+ * <select> with a custom headless-UI select component (e.g. Radix, Headless UI).
+ */
+.glass-select option {
+  padding: 8px 12px;
+  font-size: 0.875rem;
+}
+
+:root:not(.dark) .glass-select {
+  background-color: #FDF8F0;
+  color: #2d1a0e;
+}
+:root:not(.dark) .glass-select option {
+  background: #FDF8F0;
+  color: #2d1a0e;
+}
+:root:not(.dark) .glass-select option:checked {
+  background: linear-gradient(0deg, #e0d4c4 0%, #e0d4c4 100%);
+}
+
+.dark .glass-select {
+  background-color: #1a1a2e;
+  color: #e0e0e0;
+}
+.dark .glass-select option {
+  background: #1a1a2e;
+  color: #e0e0e0;
+}
+.dark .glass-select option:checked {
+  background: linear-gradient(0deg, #2d2d4e 0%, #2d2d4e 100%);
 }
 
 .gradient-page-bg {
@@ -182,7 +260,7 @@ body {
   background: linear-gradient(
     120deg,
     transparent,
-    color-mix(in srgb, var(--brand-cyan) 25%, transparent),
+    color-mix(in srgb, var(--brand-orange) 25%, transparent),
     transparent
   );
   background-size: 200% 200%;

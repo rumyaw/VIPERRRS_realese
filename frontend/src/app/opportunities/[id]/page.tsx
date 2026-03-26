@@ -4,18 +4,17 @@ import { motion } from "framer-motion";
 import dynamic from "next/dynamic";
 import Link from "next/link";
 import { useParams } from "next/navigation";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useAuth } from "@/contexts/auth-context";
 import { GlassPanel } from "@/components/ui/GlassPanel";
 import { useFavorites } from "@/hooks/use-favorites";
-import {
-  addStoredApplication,
-  hasApplied,
-} from "@/lib/applications-storage";
-import { MOCK_APPLICATIONS, MOCK_OPPORTUNITIES } from "@/lib/mock-data";
 import { buildResumeSnapshot } from "@/lib/resume-snapshot";
 import type { Opportunity } from "@/lib/types";
 import { cn } from "@/lib/cn";
+import { fetchOpportunityById } from "@/lib/api";
+import { createApplicantApplication } from "@/lib/api";
+import { fetchApplicantContacts, sendRecommendation } from "@/lib/api";
+import { useToast } from "@/hooks/useToast";
 
 const YandexMap = dynamic(
   () => import("@/components/map/YandexMap").then((m) => m.YandexMap),
@@ -46,26 +45,44 @@ export default function OpportunityPage() {
   const params = useParams<{ id: string }>();
   const { user } = useAuth();
   const { favoriteIds, toggle, has } = useFavorites();
+  const { showToast } = useToast();
   const [recText, setRecText] = useState("");
   const [recSent, setRecSent] = useState(false);
   const [applyOpen, setApplyOpen] = useState(false);
   const [applyTick, setApplyTick] = useState(0);
+  const [apiOpp, setApiOpp] = useState<Opportunity | null | undefined>(undefined);
+  const [contacts, setContacts] = useState<Array<{ peerId: string; name: string }>>([]);
+  const [toPeerId, setToPeerId] = useState("");
 
-  const opp = useMemo(
-    () => MOCK_OPPORTUNITIES.find((o) => o.id === params.id),
-    [params.id],
-  );
+  useEffect(() => {
+    if (!params.id) return;
+    const abort = new AbortController();
+    fetchOpportunityById(params.id, abort.signal)
+      .then((item) => setApiOpp(item))
+      .catch(() => setApiOpp(null));
+    return () => abort.abort();
+  }, [params.id]);
+
+  useEffect(() => {
+    if (user?.role !== "applicant") return;
+    void fetchApplicantContacts()
+      .then((items) => {
+        setContacts(items);
+        if (items.length > 0) setToPeerId(items[0].peerId);
+      })
+      .catch(() => {
+        setContacts([]);
+      });
+  }, [user?.role]);
+
+  const opp = apiOpp ?? null;
 
   const canRecommend = user?.role === "applicant";
 
   const alreadyApplied = useMemo(() => {
     void applyTick;
-    if (!opp || !user || user.role !== "applicant") return false;
-    const inMock = MOCK_APPLICATIONS.some(
-      (a) => a.applicantId === user.id && a.opportunityId === opp.id,
-    );
-    return inMock || hasApplied(user.id, opp.id);
-  }, [user, opp, applyTick]);
+    return false;
+  }, [applyTick]);
 
   if (!opp) {
     return (
@@ -81,16 +98,15 @@ export default function OpportunityPage() {
   function submitApplication() {
     if (!opp || !user || user.role !== "applicant" || !user.applicant) return;
     const snapshot = buildResumeSnapshot(user.applicant);
-    addStoredApplication({
-      id: `app-${Date.now()}`,
-      opportunityId: opp.id,
-      applicantId: user.id,
-      status: "pending",
-      createdAt: new Date().toISOString(),
-      resumeSnapshot: snapshot,
-    });
-    setApplyOpen(false);
-    setApplyTick((t) => t + 1);
+    void createApplicantApplication(opp.id, snapshot)
+      .then(() => {
+        setApplyOpen(false);
+        setApplyTick((t) => t + 1);
+        showToast("Отклик успешно отправлен", "success");
+      })
+      .catch(() => {
+        showToast("Не удалось выполнить операцию", "error");
+      });
   }
 
   return (
@@ -195,7 +211,13 @@ export default function OpportunityPage() {
             <div className="flex flex-wrap gap-3">
               <button
                 type="button"
-                onClick={() => toggle(opp.id)}
+                onClick={() => {
+                  if (!user) {
+                    showToast("Войдите или зарегистрируйтесь, чтобы добавить в избранное", "info");
+                    return;
+                  }
+                  toggle(opp.id);
+                }}
                 className={cn(
                   "glass-panel rounded-xl px-5 py-3 text-sm font-semibold",
                   has(opp.id) && "text-[var(--brand-orange)]",
@@ -252,15 +274,40 @@ export default function OpportunityPage() {
                 value={recText}
                 onChange={(e) => setRecText(e.target.value)}
               />
+              <select
+                className="glass-select mt-3 w-full px-4 py-3 text-sm outline-none"
+                value={toPeerId}
+                onChange={(e) => setToPeerId(e.target.value)}
+              >
+                {contacts.length === 0 && <option value="">Нет контактов</option>}
+                {contacts.map((c) => (
+                  <option key={c.peerId} value={c.peerId}>
+                    {c.name}
+                  </option>
+                ))}
+              </select>
               <button
                 type="button"
                 onClick={() => {
-                  setRecSent(true);
-                  setRecText("");
+                  if (!toPeerId) return;
+                  void sendRecommendation({
+                    toUserId: toPeerId,
+                    opportunityId: opp.id,
+                    message: recText || "Рекомендую обратить внимание на эту возможность",
+                  })
+                    .then(() => {
+                      setRecSent(true);
+                      setRecText("");
+                      showToast("Рекомендация отправлена", "success");
+                    })
+                    .catch(() => {
+                      setRecSent(false);
+                      showToast("Не удалось выполнить операцию", "error");
+                    });
                 }}
                 className="mt-3 w-full rounded-xl border border-[var(--glass-border)] bg-[var(--glass-bg-strong)] py-2.5 text-sm font-medium text-[var(--text-primary)] transition hover:bg-[var(--glass-bg)]"
               >
-                {recSent ? "Отправлено (демо)" : "Отправить рекомендацию"}
+                {recSent ? "Отправлено" : "Отправить рекомендацию"}
               </button>
             </GlassPanel>
           )}
@@ -271,7 +318,7 @@ export default function OpportunityPage() {
         <motion.div
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
-          className="fixed inset-0 z-[100] flex items-end justify-center bg-black/50 p-4 sm:items-center"
+          className="fixed inset-0 z-[100] flex items-end justify-center bg-black/60 p-4 backdrop-blur-sm sm:items-center"
           role="dialog"
           aria-modal
           onClick={() => setApplyOpen(false)}
@@ -280,7 +327,7 @@ export default function OpportunityPage() {
             initial={{ y: 40, opacity: 0 }}
             animate={{ y: 0, opacity: 1 }}
             onClick={(e) => e.stopPropagation()}
-            className="glass-panel-strong max-h-[85vh] w-full max-w-lg overflow-y-auto p-6"
+            className="max-h-[85vh] w-full max-w-lg overflow-y-auto rounded-2xl border border-[var(--glass-border)] bg-[var(--page-bg)] p-6 shadow-2xl"
           >
             <h2 className="text-lg font-semibold text-[var(--text-primary)]">Отправка отклика</h2>
             <p className="mt-2 text-sm text-[var(--text-secondary)]">

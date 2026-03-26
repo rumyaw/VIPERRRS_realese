@@ -15,12 +15,23 @@ type Config struct {
 }
 
 func Load() (Config, error) {
-	c := Config{
-		HTTPAddr:    getEnv("HTTP_ADDR", ":8080"),
-		DatabaseURL: strings.TrimSpace(os.Getenv("DATABASE_URL")),
-		JWTSecret:   strings.TrimSpace(os.Getenv("JWT_SECRET")),
+	databaseURL := firstNonEmptyEnv("DATABASE_URL", "TRUMPLIN_DATABASE_URL", "TRUMPLIN_DATABASE_DSN")
+	jwtSecret := firstNonEmptyEnv("JWT_SECRET", "TRUMPLIN_JWT_SECRET")
+	httpAddr := firstNonEmptyEnv("HTTP_ADDR", "TRUMPLIN_HTTP_ADDR")
+	if httpAddr == "" {
+		httpAddr = ":8080"
 	}
-	rawCORS := getEnv("CORS_ORIGINS", "http://localhost:3000")
+	cors := firstNonEmptyEnv("CORS_ORIGINS", "TRUMPLIN_CORS_ORIGIN", "TRUMPLIN_CORS_ORIGINS")
+	if cors == "" {
+		cors = "http://localhost:3000"
+	}
+
+	c := Config{
+		HTTPAddr:    strings.TrimSpace(httpAddr),
+		DatabaseURL: strings.TrimSpace(databaseURL),
+		JWTSecret:   strings.TrimSpace(jwtSecret),
+	}
+	rawCORS := cors
 	for _, o := range strings.Split(rawCORS, ",") {
 		o = strings.TrimSpace(o)
 		if o != "" {
@@ -41,4 +52,13 @@ func getEnv(key, def string) string {
 		return v
 	}
 	return def
+}
+
+func firstNonEmptyEnv(keys ...string) string {
+	for _, key := range keys {
+		if v := strings.TrimSpace(os.Getenv(key)); v != "" {
+			return v
+		}
+	}
+	return ""
 }

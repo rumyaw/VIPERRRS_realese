@@ -12,6 +12,7 @@ import (
 type Claims struct {
 	Email string          `json:"email"`
 	Role  domain.UserRole `json:"role"`
+	Type  string          `json:"type"`
 	jwt.RegisteredClaims
 }
 
@@ -23,10 +24,30 @@ func SignAccessToken(secret string, userID uuid.UUID, email string, role domain.
 	claims := Claims{
 		Email: email,
 		Role:  role,
+		Type:  "access",
 		RegisteredClaims: jwt.RegisteredClaims{
 			Subject:   userID.String(),
 			IssuedAt:  jwt.NewNumericDate(now),
-			ExpiresAt: jwt.NewNumericDate(now.Add(24 * time.Hour)),
+			ExpiresAt: jwt.NewNumericDate(now.Add(20 * time.Minute)),
+		},
+	}
+	t := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
+	return t.SignedString([]byte(secret))
+}
+
+func SignRefreshToken(secret string, userID uuid.UUID, email string, role domain.UserRole) (string, error) {
+	if len(secret) < 32 {
+		return "", fmt.Errorf("jwt secret too short")
+	}
+	now := time.Now()
+	claims := Claims{
+		Email: email,
+		Role:  role,
+		Type:  "refresh",
+		RegisteredClaims: jwt.RegisteredClaims{
+			Subject:   userID.String(),
+			IssuedAt:  jwt.NewNumericDate(now),
+			ExpiresAt: jwt.NewNumericDate(now.Add(14 * 24 * time.Hour)),
 		},
 	}
 	t := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)

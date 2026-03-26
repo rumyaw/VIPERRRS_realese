@@ -11,9 +11,9 @@ import {
 } from "react";
 import type { ApplicantProfile, AuthUser, EmployerProfile, UserRole } from "@/lib/types";
 import { mergeApplicantProfile } from "@/lib/profile-defaults";
-import { MOCK_USERS } from "@/lib/mock-data";
 
 const STORAGE_KEY = "tramplin_auth_user_v1";
+const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL?.trim() || "http://localhost:8080/api/v1";
 
 export type RegisterInput = {
   email: string;
@@ -35,9 +35,6 @@ const AuthContext = createContext<AuthContextValue | null>(null);
 
 function normalizeAuthUser(raw: AuthUser): AuthUser {
   let u = { ...raw };
-  if ((u as { role?: string }).role === "curator") {
-    u = { ...u, role: "admin" as UserRole };
-  }
   if (u.applicant) {
     u = { ...u, applicant: mergeApplicantProfile(u.applicant) };
   }
@@ -71,76 +68,76 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     setUser(loadStored());
+    void (async () => {
+      try {
+        const me = await requestMe();
+        if (me) {
+          const normalized = normalizeAuthUser(me);
+          saveUser(normalized);
+          setUser(normalized);
+        }
+      } catch {
+        // noop: backend may be unavailable at first load
+      }
+    })();
   }, []);
 
   const login = useCallback(async (email: string, password: string) => {
-    await new Promise((r) => setTimeout(r, 280));
-    const normalized = email.trim().toLowerCase();
-    if (password.length < 4) return { ok: false, error: "Пароль слишком короткий" };
-
-    if (normalized === "student@example.com") {
-      const raw = MOCK_USERS["user-applicant"];
-      const u = normalizeAuthUser({ ...raw });
-      saveUser(u);
-      setUser(u);
+    try {
+      const res = await fetch(`${API_BASE}/auth/login`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Accept: "application/json" },
+        credentials: "include",
+        body: JSON.stringify({ email, password }),
+      });
+      const data = (await res.json().catch(() => ({}))) as {
+        error?: string;
+        user?: AuthUser;
+      };
+      if (!res.ok || !data.user) {
+        return { ok: false, error: data.error ?? "Ошибка входа" };
+      }
+      const normalized = normalizeAuthUser(data.user);
+      saveUser(normalized);
+      setUser(normalized);
       return { ok: true };
+    } catch {
+      return { ok: false, error: "Backend недоступен" };
     }
-    if (normalized === "hr@codeinsight.example") {
-      const u = { ...MOCK_USERS["user-employer"] };
-      saveUser(u);
-      setUser(u);
-      return { ok: true };
-    }
-    if (normalized === "admin@tramplin.example" || normalized === "curator@university.example") {
-      const u = { ...MOCK_USERS["user-admin"] };
-      saveUser(u);
-      setUser(u);
-      return { ok: true };
-    }
-
-    return {
-      ok: false,
-      error:
-        "Демо: student@example.com, hr@codeinsight.example или admin@tramplin.example (ранее curator@university.example)",
-    };
   }, []);
 
   const register = useCallback(async (input: RegisterInput) => {
-    await new Promise((r) => setTimeout(r, 320));
-    if (input.password.length < 6) return { ok: false, error: "Минимум 6 символов в пароле" };
-
-    const base: AuthUser = {
-      id: `local-${Date.now()}`,
-      email: input.email.trim().toLowerCase(),
-      displayName: input.displayName.trim(),
-      role: input.role,
-    };
-
-    if (input.role === "applicant") {
-      base.applicant = mergeApplicantProfile({
-        fullName: input.displayName.trim(),
+    try {
+      const res = await fetch(`${API_BASE}/auth/register`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Accept: "application/json" },
+        credentials: "include",
+        body: JSON.stringify(input),
       });
-    } else if (input.role === "employer") {
-      base.employer = {
-        companyName: "",
-        description: "",
-        industry: "",
-        website: "",
-        socials: "",
-        inn: "",
-        verified: false,
-        logoDataUrl: null,
+      const data = (await res.json().catch(() => ({}))) as {
+        error?: string;
+        user?: AuthUser;
       };
+      if (!res.ok || !data.user) {
+        return { ok: false, error: data.error ?? "Ошибка регистрации" };
+      }
+      const normalized = normalizeAuthUser(data.user);
+      saveUser(normalized);
+      setUser(normalized);
+      return { ok: true };
+    } catch {
+      return { ok: false, error: "Backend недоступен" };
     }
-
-    saveUser(base);
-    setUser(base);
-    return { ok: true };
   }, []);
 
   const logout = useCallback(() => {
-    saveUser(null);
-    setUser(null);
+    void fetch(`${API_BASE}/auth/logout`, {
+      method: "POST",
+      credentials: "include",
+    }).finally(() => {
+      saveUser(null);
+      setUser(null);
+    });
   }, []);
 
   const updateApplicant = useCallback((patch: Partial<ApplicantProfile>) => {
@@ -189,4 +186,30 @@ export function useAuth() {
   const ctx = useContext(AuthContext);
   if (!ctx) throw new Error("useAuth must be used within AuthProvider");
   return ctx;
+}
+
+async function requestMe(): Promise<AuthUser | null> {
+  const res = await fetch(`${API_BASE}/auth/me`, {
+    method: "GET",
+    headers: { Accept: "application/json" },
+    credentials: "include",
+  });
+  if (res.status === 401) {
+    const refreshed = await fetch(`${API_BASE}/auth/refresh`, {
+      method: "POST",
+      credentials: "include",
+    });
+    if (!refreshed.ok) return null;
+    const retry = await fetch(`${API_BASE}/auth/me`, {
+      method: "GET",
+      headers: { Accept: "application/json" },
+      credentials: "include",
+    });
+    if (!retry.ok) return null;
+    const retryData = (await retry.json()) as { user?: AuthUser };
+    return retryData.user ?? null;
+  }
+  if (!res.ok) return null;
+  const data = (await res.json()) as { user?: AuthUser };
+  return data.user ?? null;
 }

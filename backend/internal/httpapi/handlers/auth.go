@@ -1,18 +1,23 @@
 package handlers
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"net/http"
+	"time"
 
+	"tramplin/internal/auth"
 	"tramplin/internal/domain"
 	"tramplin/internal/httpapi/middleware"
 	"tramplin/internal/httpapi/respond"
+	"tramplin/internal/repository"
 	"tramplin/internal/service"
 )
 
 type Auth struct {
-	Svc *service.AuthService
+	Svc   *service.AuthService
+	Users *repository.UserRepository
 }
 
 type registerBody struct {
@@ -40,7 +45,7 @@ func (h *Auth) Register(w http.ResponseWriter, r *http.Request) {
 		DisplayName: body.DisplayName,
 		Role:        role,
 	}
-	u, token, err := h.Svc.Register(r.Context(), in)
+	u, accessToken, err := h.Svc.Register(r.Context(), in)
 	if err != nil {
 		switch {
 		case errors.Is(err, service.ErrEmailTaken):
@@ -52,7 +57,13 @@ func (h *Auth) Register(w http.ResponseWriter, r *http.Request) {
 		}
 		return
 	}
-	respond.JSON(w, http.StatusCreated, map[string]any{"user": userDTO(u), "accessToken": token})
+	refreshToken, err := h.Svc.IssueRefreshToken(u)
+	if err != nil {
+		respond.Error(w, http.StatusInternalServerError, "token generation failed")
+		return
+	}
+	setAuthCookies(w, accessToken, refreshToken)
+	respond.JSON(w, http.StatusCreated, map[string]any{"user": h.userDTO(r.Context(), u)})
 }
 
 func (h *Auth) Login(w http.ResponseWriter, r *http.Request) {
@@ -61,7 +72,7 @@ func (h *Auth) Login(w http.ResponseWriter, r *http.Request) {
 		respond.Error(w, http.StatusBadRequest, "invalid json")
 		return
 	}
-	u, token, err := h.Svc.Login(r.Context(), body.Email, body.Password)
+	u, accessToken, err := h.Svc.Login(r.Context(), body.Email, body.Password)
 	if err != nil {
 		if errors.Is(err, service.ErrInvalidCredentials) {
 			respond.Error(w, http.StatusUnauthorized, "invalid email or password")
@@ -70,7 +81,48 @@ func (h *Auth) Login(w http.ResponseWriter, r *http.Request) {
 		respond.Error(w, http.StatusInternalServerError, "login failed")
 		return
 	}
-	respond.JSON(w, http.StatusOK, map[string]any{"user": userDTO(u), "accessToken": token})
+	refreshToken, err := h.Svc.IssueRefreshToken(u)
+	if err != nil {
+		respond.Error(w, http.StatusInternalServerError, "token generation failed")
+		return
+	}
+	setAuthCookies(w, accessToken, refreshToken)
+	respond.JSON(w, http.StatusOK, map[string]any{"user": h.userDTO(r.Context(), u)})
+}
+
+func (h *Auth) Refresh(w http.ResponseWriter, r *http.Request) {
+	refreshCookie, err := r.Cookie("refresh_token")
+	if err != nil || refreshCookie.Value == "" {
+		respond.Error(w, http.StatusUnauthorized, "missing refresh token")
+		return
+	}
+	claims, err := auth.ParseToken(h.Svc.JWTSecret(), refreshCookie.Value)
+	if err != nil || claims.Type != "refresh" {
+		respond.Error(w, http.StatusUnauthorized, "invalid refresh token")
+		return
+	}
+	u, err := h.Svc.Me(r.Context(), claims.Subject)
+	if err != nil {
+		respond.Error(w, http.StatusUnauthorized, "user not found")
+		return
+	}
+	accessToken, err := auth.SignAccessToken(h.Svc.JWTSecret(), u.ID, u.Email, u.Role)
+	if err != nil {
+		respond.Error(w, http.StatusInternalServerError, "token generation failed")
+		return
+	}
+	newRefreshToken, err := h.Svc.IssueRefreshToken(u)
+	if err != nil {
+		respond.Error(w, http.StatusInternalServerError, "token generation failed")
+		return
+	}
+	setAuthCookies(w, accessToken, newRefreshToken)
+	respond.JSON(w, http.StatusOK, map[string]any{"user": h.userDTO(r.Context(), u)})
+}
+
+func (h *Auth) Logout(w http.ResponseWriter, _ *http.Request) {
+	clearAuthCookies(w)
+	respond.JSON(w, http.StatusOK, map[string]any{"ok": true})
 }
 
 func (h *Auth) Me(w http.ResponseWriter, r *http.Request) {
@@ -84,14 +136,90 @@ func (h *Auth) Me(w http.ResponseWriter, r *http.Request) {
 		respond.Error(w, http.StatusNotFound, "user not found")
 		return
 	}
-	respond.JSON(w, http.StatusOK, map[string]any{"user": userDTO(u)})
+	respond.JSON(w, http.StatusOK, map[string]any{"user": h.userDTO(r.Context(), u)})
 }
 
-func userDTO(u *domain.User) map[string]any {
-	return map[string]any{
+func (h *Auth) userDTO(ctx context.Context, u *domain.User) map[string]any {
+	out := map[string]any{
 		"id":          u.ID.String(),
 		"email":       u.Email,
 		"displayName": u.DisplayName,
 		"role":        u.Role,
 	}
+	if h.Users == nil {
+		return out
+	}
+	if u.Role == domain.RoleApplicant {
+		if p, err := h.Users.GetApplicantProfile(ctx, u.ID); err == nil && p != nil {
+			out["applicant"] = map[string]any{
+				"fullName":        p.FullName,
+				"university":      p.University,
+				"courseOrYear":    p.CourseOrYear,
+				"skills":          p.Skills,
+				"bio":             p.Bio,
+				"repoLinks":       p.RepoLinks,
+				"avatarDataUrl":   p.AvatarURL,
+				"jobSearchStatus": p.JobSearchStatus,
+				"resume":          p.Resume,
+				"privacy":         p.Privacy,
+			}
+		}
+	}
+	if u.Role == domain.RoleEmployer {
+		if p, err := h.Users.GetEmployerProfile(ctx, u.ID); err == nil && p != nil {
+			out["employer"] = map[string]any{
+				"companyName": p.CompanyName,
+				"description": p.Description,
+				"industry":    p.Industry,
+				"website":     p.Website,
+				"socials":     p.Socials,
+				"inn":         p.INN,
+				"verified":    p.Verified,
+				"logoDataUrl": p.LogoURL,
+			}
+		}
+	}
+	return out
+}
+
+func setAuthCookies(w http.ResponseWriter, accessToken, refreshToken string) {
+	http.SetCookie(w, &http.Cookie{
+		Name:     "access_token",
+		Value:    accessToken,
+		Path:     "/",
+		HttpOnly: true,
+		Secure:   false,
+		SameSite: http.SameSiteLaxMode,
+		Expires:  time.Now().Add(20 * time.Minute),
+	})
+	http.SetCookie(w, &http.Cookie{
+		Name:     "refresh_token",
+		Value:    refreshToken,
+		Path:     "/",
+		HttpOnly: true,
+		Secure:   false,
+		SameSite: http.SameSiteLaxMode,
+		Expires:  time.Now().Add(14 * 24 * time.Hour),
+	})
+}
+
+func clearAuthCookies(w http.ResponseWriter) {
+	http.SetCookie(w, &http.Cookie{
+		Name:     "access_token",
+		Value:    "",
+		Path:     "/",
+		HttpOnly: true,
+		Secure:   false,
+		SameSite: http.SameSiteLaxMode,
+		MaxAge:   -1,
+	})
+	http.SetCookie(w, &http.Cookie{
+		Name:     "refresh_token",
+		Value:    "",
+		Path:     "/",
+		HttpOnly: true,
+		Secure:   false,
+		SameSite: http.SameSiteLaxMode,
+		MaxAge:   -1,
+	})
 }

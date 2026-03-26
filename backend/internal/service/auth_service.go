@@ -78,6 +78,14 @@ func (s *AuthService) Register(ctx context.Context, in domain.RegisterInput) (*d
 	return u, token, nil
 }
 
+func (s *AuthService) IssueRefreshToken(u *domain.User) (string, error) {
+	return auth.SignRefreshToken(s.jwt, u.ID, u.Email, u.Role)
+}
+
+func (s *AuthService) JWTSecret() string {
+	return s.jwt
+}
+
 func (s *AuthService) Login(ctx context.Context, email, password string) (*domain.User, string, error) {
 	email = strings.TrimSpace(strings.ToLower(email))
 	u, err := s.users.GetByEmail(ctx, email)

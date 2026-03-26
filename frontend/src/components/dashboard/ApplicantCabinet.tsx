@@ -2,29 +2,25 @@
 
 import { motion } from "framer-motion";
 import Link from "next/link";
-import { useEffect, useMemo, useState } from "react";
+import { useState } from "react";
 import { useAuth } from "@/contexts/auth-context";
 import { GlassPanel } from "@/components/ui/GlassPanel";
 import { JOB_SEARCH_LABELS } from "@/lib/profile-defaults";
-import {
-  MOCK_APPLICATIONS,
-  MOCK_CONTACTS,
-  MOCK_OPPORTUNITIES,
-  MOCK_PEER_NAMES,
-  MOCK_RECOMMENDATIONS,
-} from "@/lib/mock-data";
-import { getStoredApplications } from "@/lib/applications-storage";
 import { cn } from "@/lib/cn";
-import type { ApplicantProfile, ApplicationRecord, JobSearchStatus } from "@/lib/types";
+import type { ApplicantProfile, JobSearchStatus } from "@/lib/types";
+import {
+  updateApplicantPrivacy,
+  updateApplicantProfile,
+} from "@/lib/api";
+import { useToast } from "@/hooks/useToast";
 
 const tabs = [
   { id: "profile", label: "Профиль" },
   { id: "resume", label: "Резюме" },
-  { id: "applications", label: "Отклики" },
   { id: "contacts", label: "Контакты" },
-  { id: "recommendations", label: "Рекомендации" },
   { id: "privacy", label: "Приватность" },
 ] as const;
+
 
 type TabId = (typeof tabs)[number]["id"];
 
@@ -52,41 +48,10 @@ function profileCompletion(p: ApplicantProfile) {
 
 export function ApplicantCabinet() {
   const { user, updateApplicant } = useAuth();
+  const { showToast } = useToast();
   const [tab, setTab] = useState<TabId>("profile");
-  const [appTick, setAppTick] = useState(0);
   const profile = user?.applicant;
-
-  useEffect(() => {
-    const on = () => setAppTick((t) => t + 1);
-    window.addEventListener("tramplin-applications-change", on);
-    return () => window.removeEventListener("tramplin-applications-change", on);
-  }, []);
-
-  const applications = useMemo(() => {
-    void appTick;
-    if (!user) return [];
-    const fromMock = MOCK_APPLICATIONS.filter((a) => a.applicantId === user.id);
-    const fromStore = getStoredApplications(user.id);
-    const map = new Map<string, ApplicationRecord>();
-    for (const a of [...fromMock, ...fromStore]) {
-      map.set(`${a.opportunityId}-${a.applicantId}`, a);
-    }
-    return [...map.values()]
-      .map((a) => ({
-        ...a,
-        opp: MOCK_OPPORTUNITIES.find((o) => o.id === a.opportunityId),
-      }))
-      .sort((a, b) => (a.createdAt < b.createdAt ? 1 : -1));
-  }, [user, appTick]);
-
-  const recs = useMemo(() => {
-    if (!user) return [];
-    return MOCK_RECOMMENDATIONS.filter((r) => r.toUserId === user.id).map((r) => ({
-      ...r,
-      opp: MOCK_OPPORTUNITIES.find((o) => o.id === r.opportunityId),
-      from: MOCK_PEER_NAMES[r.fromUserId] ?? r.fromUserId,
-    }));
-  }, [user]);
+  const [apiError, setApiError] = useState<string | null>(null);
 
   if (!profile) return null;
 
@@ -157,7 +122,7 @@ export function ApplicantCabinet() {
                 Статус поиска работы
               </label>
               <select
-                className="glass-input mt-2 w-full px-3 py-2.5 text-sm"
+                className="glass-select mt-2 w-full px-3 py-2.5 text-sm"
                 value={profile.jobSearchStatus}
                 onChange={(e) =>
                   updateApplicant({ jobSearchStatus: e.target.value as JobSearchStatus })
@@ -245,8 +210,33 @@ export function ApplicantCabinet() {
               />
             </div>
             <p className="text-xs text-[var(--text-secondary)]">
-              Резюме оформляется во вкладке «Резюме». Данные хранятся в браузере до подключения API.
+              Резюме оформляется во вкладке «Резюме».
             </p>
+            <button
+              type="button"
+              onClick={() =>
+                void updateApplicantProfile({
+                  fullName: profile.fullName,
+                  university: profile.university,
+                  courseOrYear: profile.courseOrYear,
+                  skills: profile.skills,
+                  bio: profile.bio,
+                  repoLinks: profile.repoLinks,
+                  avatarDataUrl: profile.avatarDataUrl,
+                  jobSearchStatus: profile.jobSearchStatus,
+                  resume: profile.resume as unknown as Record<string, unknown>,
+                })
+                  .then(() => showToast("Профиль успешно обновлён", "success"))
+                  .catch((e) => {
+                    const msg = e instanceof Error ? e.message : "Не удалось сохранить профиль";
+                    setApiError(msg);
+                    showToast(msg, "error");
+                  })
+              }
+              className="rounded-xl bg-[linear-gradient(135deg,var(--brand-magenta),var(--brand-orange))] px-4 py-2 text-sm font-semibold text-white"
+            >
+              Сохранить профиль
+            </button>
           </GlassPanel>
         </motion.div>
       )}
@@ -314,43 +304,33 @@ export function ApplicantCabinet() {
                 }
               />
             </div>
+            <button
+              type="button"
+              onClick={() =>
+                void updateApplicantProfile({
+                  fullName: profile.fullName,
+                  university: profile.university,
+                  courseOrYear: profile.courseOrYear,
+                  skills: profile.skills,
+                  bio: profile.bio,
+                  repoLinks: profile.repoLinks,
+                  avatarDataUrl: profile.avatarDataUrl,
+                  jobSearchStatus: profile.jobSearchStatus,
+                  resume: profile.resume as unknown as Record<string, unknown>,
+                })
+                  .then(() => showToast("Резюме успешно сохранено", "success"))
+                  .catch((e) => {
+                    const msg = e instanceof Error ? e.message : "Не удалось сохранить резюме";
+                    setApiError(msg);
+                    showToast(msg, "error");
+                  })
+              }
+              className="rounded-xl bg-[linear-gradient(135deg,var(--brand-magenta),var(--brand-orange))] px-4 py-2 text-sm font-semibold text-white"
+            >
+              Сохранить резюме
+            </button>
           </GlassPanel>
         </motion.div>
-      )}
-
-      {tab === "applications" && (
-        <GlassPanel className="p-6">
-          <h2 className="text-lg font-semibold text-[var(--text-primary)]">Мои отклики</h2>
-          <ul className="mt-4 space-y-3">
-            {applications.length === 0 && (
-              <li className="text-sm text-[var(--text-secondary)]">Пока нет откликов.</li>
-            )}
-            {applications.map((a) => (
-              <li
-                key={a.id}
-                className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-[var(--glass-border)] bg-[var(--glass-bg)] px-4 py-3"
-              >
-                <div>
-                  <p className="font-medium text-[var(--text-primary)]">{a.opp?.title ?? "—"}</p>
-                  <p className="text-xs text-[var(--text-secondary)]">{a.opp?.companyName}</p>
-                  {a.resumeSnapshot && (
-                    <p className="mt-2 line-clamp-2 text-xs text-[var(--text-secondary)]">
-                      Резюме: {a.resumeSnapshot}
-                    </p>
-                  )}
-                </div>
-                <span className="rounded-full bg-[var(--glass-bg-strong)] px-3 py-1 text-xs capitalize">
-                  {a.status}
-                </span>
-                {a.opp && (
-                  <Link href={`/opportunities/${a.opp.id}`} className="text-sm text-[var(--brand-cyan)] hover:underline">
-                    Карточка
-                  </Link>
-                )}
-              </li>
-            ))}
-          </ul>
-        </GlassPanel>
       )}
 
       {tab === "contacts" && (
@@ -360,42 +340,12 @@ export function ApplicantCabinet() {
             Контакты видят ваш статус поиска («{JOB_SEARCH_LABELS[profile.jobSearchStatus]}») при
             открытом нетворкинге и могут рекомендовать вакансии.
           </p>
-          <ul className="mt-4 space-y-2">
-            {MOCK_CONTACTS.map((c) => (
-              <li
-                key={c.peerId}
-                className="flex items-center justify-between rounded-xl border border-[var(--glass-border)] px-4 py-3"
-              >
-                <span className="text-[var(--text-primary)]">{MOCK_PEER_NAMES[c.peerId] ?? c.peerId}</span>
-                <span className="text-xs text-[var(--text-secondary)]">с {c.since}</span>
-              </li>
-            ))}
-          </ul>
-        </GlassPanel>
-      )}
-
-      {tab === "recommendations" && (
-        <GlassPanel className="p-6">
-          <h2 className="text-lg font-semibold text-[var(--text-primary)]">Рекомендации от контактов</h2>
-          <ul className="mt-4 space-y-4">
-            {recs.map((r) => (
-              <li key={r.id} className="rounded-xl border border-[var(--glass-border)] bg-[var(--glass-bg)] p-4">
-                <p className="text-sm text-[var(--text-secondary)]">
-                  От <span className="text-[var(--text-primary)]">{r.from}</span>
-                </p>
-                <p className="mt-2 font-medium text-[var(--text-primary)]">{r.opp?.title}</p>
-                <p className="mt-1 text-sm text-[var(--text-secondary)]">{r.message}</p>
-                {r.opp && (
-                  <Link
-                    href={`/opportunities/${r.opp.id}`}
-                    className="mt-3 inline-block text-sm text-[var(--brand-cyan)] hover:underline"
-                  >
-                    Открыть вакансию
-                  </Link>
-                )}
-              </li>
-            ))}
-          </ul>
+          <Link
+            href="/applicant/contacts"
+            className="mt-4 inline-flex items-center gap-2 rounded-xl bg-[linear-gradient(135deg,var(--brand-magenta),var(--brand-orange))] px-5 py-3 text-sm font-semibold text-white shadow-lg transition hover:opacity-90"
+          >
+            Управление контактами →
+          </Link>
         </GlassPanel>
       )}
 
@@ -407,9 +357,22 @@ export function ApplicantCabinet() {
             description="Если включено, контакты не увидят список ваших откликов."
             checked={profile.privacy.hideApplicationsFromPeers}
             onChange={(v) =>
-              updateApplicant({
-                privacy: { ...profile.privacy, hideApplicationsFromPeers: v },
-              })
+              void (async () => {
+                try {
+                  await updateApplicantPrivacy({
+                    hideApplicationsFromPeers: v,
+                    openProfileToNetwork: profile.privacy.openProfileToNetwork,
+                  });
+                  updateApplicant({
+                    privacy: { ...profile.privacy, hideApplicationsFromPeers: v },
+                  });
+                  showToast("Профиль успешно обновлён", "success");
+                } catch (e) {
+                  const msg = e instanceof Error ? e.message : "Не удалось обновить приватность";
+                  setApiError(msg);
+                  showToast(msg, "error");
+                }
+              })()
             }
           />
           <ToggleRow
@@ -417,13 +380,27 @@ export function ApplicantCabinet() {
             description="Авторизованные соискатели смогут видеть расширенную информацию и статус поиска."
             checked={profile.privacy.openProfileToNetwork}
             onChange={(v) =>
-              updateApplicant({
-                privacy: { ...profile.privacy, openProfileToNetwork: v },
-              })
+              void (async () => {
+                try {
+                  await updateApplicantPrivacy({
+                    hideApplicationsFromPeers: profile.privacy.hideApplicationsFromPeers,
+                    openProfileToNetwork: v,
+                  });
+                  updateApplicant({
+                    privacy: { ...profile.privacy, openProfileToNetwork: v },
+                  });
+                  showToast("Профиль успешно обновлён", "success");
+                } catch (e) {
+                  const msg = e instanceof Error ? e.message : "Не удалось обновить приватность";
+                  setApiError(msg);
+                  showToast(msg, "error");
+                }
+              })()
             }
           />
         </GlassPanel>
       )}
+      {apiError && <p className="text-xs text-red-300">{apiError}</p>}
     </div>
   );
 }

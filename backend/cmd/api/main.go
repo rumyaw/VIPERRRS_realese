@@ -4,6 +4,7 @@ import (
 	"context"
 	"log"
 	"net/http"
+	"path/filepath"
 	"os"
 	"os/signal"
 	"syscall"
@@ -18,7 +19,7 @@ import (
 )
 
 func main() {
-	_ = godotenv.Load()
+	loadDotEnv()
 
 	cfg, err := config.Load()
 	if err != nil {
@@ -41,7 +42,7 @@ func main() {
 	authSvc := service.NewAuthService(userRepo, cfg.JWTSecret)
 	oppSvc := service.NewOpportunityService(oppRepo)
 
-	handler := httpapi.NewRouter(cfg, authSvc, oppSvc)
+	handler := httpapi.NewRouter(cfg, authSvc, oppSvc, userRepo, oppRepo)
 	srv := &http.Server{
 		Addr:              cfg.HTTPAddr,
 		Handler:           handler,
@@ -67,4 +68,13 @@ func main() {
 	if err := srv.Shutdown(shutdownCtx); err != nil {
 		log.Printf("shutdown: %v", err)
 	}
+}
+
+func loadDotEnv() {
+	paths := []string{
+		".env",
+		filepath.Join("..", "..", ".env"),
+		filepath.Join("backend", ".env"),
+	}
+	_ = godotenv.Load(paths...)
 }

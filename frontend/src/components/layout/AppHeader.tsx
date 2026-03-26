@@ -12,15 +12,33 @@ import { roleLabelRu } from "@/lib/role-labels";
 import type { AuthUser } from "@/lib/types";
 
 function navFor(user: AuthUser | null) {
-  const base = [{ href: "/", label: "Главная" as const }];
+  const home = { href: "/", label: "Главная" };
   if (!user) {
+    return [home, { href: "/login", label: "Вход" }, { href: "/register", label: "Регистрация" }];
+  }
+  if (user.role === "applicant") {
     return [
-      ...base,
-      { href: "/login", label: "Вход" as const },
-      { href: "/register", label: "Регистрация" as const },
+      home,
+      { href: "/applicant/applications", label: "Мои отклики" },
+      { href: "/applicant/recommendations", label: "Рекомендации" },
+      { href: "/applicant/contacts", label: "Контакты" },
+      { href: "/dashboard", label: "Кабинет" },
     ];
   }
-  return [...base, { href: "/dashboard", label: "Кабинет" as const }];
+  if (user.role === "employer") {
+    return [
+      home,
+      { href: "/employer/opportunities", label: "Мои карточки" },
+      { href: "/employer/opportunities/new", label: "Создать карточку" },
+      { href: "/employer/applications", label: "Отклики" },
+      { href: "/employer/stats", label: "Статистика" },
+      { href: "/employer/company", label: "Компания" },
+    ];
+  }
+  if (user.role === "curator") {
+    return [home, { href: "/admin/dashboard", label: "Панель управления" }];
+  }
+  return [home, { href: "/dashboard", label: "Кабинет" }];
 }
 
 export function AppHeader() {
@@ -34,7 +52,7 @@ export function AppHeader() {
       <div className="mx-auto flex max-w-6xl items-center justify-between gap-4 px-4 py-3 sm:px-6">
         <Link href="/" className="flex items-center gap-3" onClick={() => setOpen(false)}>
           <motion.div whileHover={{ scale: 1.03 }} className="relative h-10 w-10 shrink-0">
-            <Image src="/public/images/logo.png" alt="Трамплин" fill className="object-contain drop-shadow-md" priority />
+            <Image src="/images/logo.png" alt="Трамплин" fill className="object-contain drop-shadow-md" priority />
           </motion.div>
           <div className="leading-tight">
             <span className="block text-lg font-bold tracking-tight text-[var(--text-primary)]">
@@ -46,13 +64,13 @@ export function AppHeader() {
           </div>
         </Link>
 
-        <nav className="hidden items-center gap-1 md:flex">
+        <nav className="ml-auto hidden items-center gap-1 overflow-x-auto md:flex">
           {nav.map((item) => (
             <Link
               key={item.href}
               href={item.href}
               className={cn(
-                "rounded-xl px-3 py-2 text-sm font-medium transition",
+                "shrink-0 rounded-xl px-3 py-2 text-sm font-medium transition",
                 pathname === item.href
                   ? "bg-[var(--glass-bg-strong)] text-[var(--text-primary)]"
                   : "text-[var(--text-secondary)] hover:bg-[var(--glass-bg)] hover:text-[var(--text-primary)]",
@@ -61,21 +79,24 @@ export function AppHeader() {
               {item.label}
             </Link>
           ))}
-          {user && (
-            <span className="ml-2 max-w-[200px] truncate rounded-full border border-[var(--glass-border)] px-3 py-1 text-xs text-[var(--text-secondary)] sm:max-w-none">
-              {user.displayName} · {roleLabelRu(user.role)}
-            </span>
-          )}
-          {user && (
-            <button
-              type="button"
-              onClick={logout}
-              className="rounded-xl px-3 py-2 text-sm text-[var(--text-secondary)] hover:bg-[var(--glass-bg)]"
-            >
-              Выйти
-            </button>
-          )}
         </nav>
+
+        <div className="hidden items-center gap-2 md:flex">
+          {user && (
+            <>
+              <span className="max-w-[200px] truncate rounded-full border border-[var(--glass-border)] px-3 py-1 text-xs text-[var(--text-secondary)] sm:max-w-none">
+                {user.displayName} · {roleLabelRu(user.role)}
+              </span>
+              <button
+                type="button"
+                onClick={logout}
+                className="rounded-xl px-3 py-2 text-sm text-[var(--text-secondary)] hover:bg-[var(--glass-bg)]"
+              >
+                Выйти
+              </button>
+            </>
+          )}
+        </div>
 
         <div className="flex items-center gap-2">
           <ThemeToggle />

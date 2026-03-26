@@ -1,5 +1,5 @@
 /** Авторизованные роли. «Гость» — не роль, а отсутствие сессии (user === null). */
-export type UserRole = "applicant" | "employer" | "admin";
+export type UserRole = "applicant" | "employer" | "curator";
 
 export type OpportunityType =
   | "internship"
@@ -37,7 +37,7 @@ export interface Opportunity {
   workFormat: WorkFormat;
   /** Адрес офиса или город для удалёнки */
   locationLabel: string;
-  /** [lon, lat] для Яндекс.Карт */
+  /** [lat, lon] для Яндекс.Карт */
   coords: [number, number];
   publishedAt: string;
   validUntil: string | null;

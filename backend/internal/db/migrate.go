@@ -2,23 +2,15 @@ package db
 
 import (
 	"context"
-	"embed"
 	"fmt"
-	"strings"
+	"log"
 
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
-//go:embed migrations/*.sql
-var migrationFiles embed.FS
-
 // Migrate применяет SQL-миграции по порядку имён файлов (0001_, 0002_, …).
 func Migrate(ctx context.Context, pool *pgxpool.Pool) error {
-	entries, err := migrationFiles.ReadDir("migrations")
-	if err != nil {
-		return fmt.Errorf("read migrations: %w", err)
-	}
-	_, err = pool.Exec(ctx, `
+	_, err := pool.Exec(ctx, `
 CREATE TABLE IF NOT EXISTS schema_migrations (
   filename text PRIMARY KEY,
   applied_at timestamptz NOT NULL DEFAULT now()
@@ -28,69 +20,32 @@ CREATE TABLE IF NOT EXISTS schema_migrations (
 		return fmt.Errorf("ensure schema_migrations: %w", err)
 	}
 
-	for _, e := range entries {
-		if e.IsDir() || !strings.HasSuffix(e.Name(), ".sql") {
-			continue
-		}
+	names := migrationNames()
+	for _, name := range names {
 		var done bool
-		err := pool.QueryRow(ctx, `SELECT EXISTS(SELECT 1 FROM schema_migrations WHERE filename = $1)`, e.Name()).Scan(&done)
+		err := pool.QueryRow(ctx, `SELECT EXISTS(SELECT 1 FROM schema_migrations WHERE filename = $1)`, name).Scan(&done)
 		if err != nil {
-			return fmt.Errorf("check migration %s: %w", e.Name(), err)
+			return fmt.Errorf("check migration %s: %w", name, err)
 		}
 		if done {
+			log.Printf("Migration %s already applied, skipping", name)
 			continue
 		}
-		body, err := migrationFiles.ReadFile("migrations/" + e.Name())
-		if err != nil {
-			return fmt.Errorf("read migration %s: %w", e.Name(), err)
+
+		sql, ok := migrations[name]
+		if !ok {
+			return fmt.Errorf("migration %s not found", name)
 		}
-		if err := execStatements(ctx, pool, string(body)); err != nil {
-			return fmt.Errorf("apply migration %s: %w", e.Name(), err)
+
+		log.Printf("Applying migration: %s (size: %d bytes)", name, len(sql))
+		if _, err := pool.Exec(ctx, sql); err != nil {
+			return fmt.Errorf("apply migration %s: %w", name, err)
 		}
-		if _, err := pool.Exec(ctx, `INSERT INTO schema_migrations (filename) VALUES ($1)`, e.Name()); err != nil {
-			return fmt.Errorf("record migration %s: %w", e.Name(), err)
+
+		if _, err := pool.Exec(ctx, `INSERT INTO schema_migrations (filename) VALUES ($1)`, name); err != nil {
+			return fmt.Errorf("record migration %s: %w", name, err)
 		}
+		log.Printf("Migration %s applied successfully", name)
 	}
 	return nil
-}
-
-func execStatements(ctx context.Context, pool *pgxpool.Pool, sql string) error {
-	stmts := splitSQL(sql)
-	for _, s := range stmts {
-		s = strings.TrimSpace(s)
-		if s == "" || strings.HasPrefix(s, "--") {
-			continue
-		}
-		if _, err := pool.Exec(ctx, s); err != nil {
-			return fmt.Errorf("exec: %w\n---\n%s\n---", err, s)
-		}
-	}
-	return nil
-}
-
-// splitSQL делит по `;` на верхнем уровне (без учёта строк и $$ — для наших DDL достаточно).
-func splitSQL(sql string) []string {
-	var out []string
-	var b strings.Builder
-	inDollar := false
-	for i := 0; i < len(sql); i++ {
-		c := sql[i]
-		if i+1 < len(sql) && c == '$' && sql[i+1] == '$' {
-			inDollar = !inDollar
-			b.WriteByte(c)
-			b.WriteByte(sql[i+1])
-			i++
-			continue
-		}
-		if !inDollar && c == ';' {
-			out = append(out, b.String())
-			b.Reset()
-			continue
-		}
-		b.WriteByte(c)
-	}
-	if b.Len() > 0 {
-		out = append(out, b.String())
-	}
-	return out
 }
