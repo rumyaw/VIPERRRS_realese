@@ -4,15 +4,14 @@ import { motion } from "framer-motion";
 import dynamic from "next/dynamic";
 import Link from "next/link";
 import { useParams } from "next/navigation";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import { useAuth } from "@/contexts/auth-context";
 import { GlassPanel } from "@/components/ui/GlassPanel";
 import { useFavorites } from "@/hooks/use-favorites";
 import { buildResumeSnapshot } from "@/lib/resume-snapshot";
 import type { Opportunity } from "@/lib/types";
 import { cn } from "@/lib/cn";
-import { fetchOpportunityById } from "@/lib/api";
-import { createApplicantApplication } from "@/lib/api";
+import { fetchOpportunityById, createApplicantApplication, fetchApplicantApplications } from "@/lib/api";
 import { addServerFavorite, removeServerFavorite } from "@/lib/api";
 import { useToast } from "@/hooks/useToast";
 import { ShareMenu } from "@/components/opportunities/ShareMenu";
@@ -62,10 +61,20 @@ export default function OpportunityPage() {
 
   const opp = apiOpp ?? null;
 
-  const alreadyApplied = useMemo(() => {
-    void applyTick;
-    return false;
-  }, [applyTick]);
+  const [appliedIds, setAppliedIds] = useState<Set<string>>(new Set());
+
+  useEffect(() => {
+    if (user?.role === "applicant") {
+      fetchApplicantApplications()
+        .then((apps) => {
+          const ids = new Set(apps.map((a: Record<string, unknown>) => String(a.opportunityId)));
+          setAppliedIds(ids);
+        })
+        .catch(() => {});
+    }
+  }, [user, applyTick]);
+
+  const alreadyApplied = opp ? appliedIds.has(opp.id) : false;
 
   if (!opp) {
     return (
@@ -158,7 +167,7 @@ export default function OpportunityPage() {
                 </p>
               </div>
               <div>
-                <p className="text-xs uppercase text-[var(--text-secondary)]">Компенсация</p>
+                <p className="text-xs uppercase text-[var(--text-secondary)]">Заработная плата</p>
                 <p className="mt-1 text-[var(--text-primary)]">
                   {opp.salaryMin != null && opp.salaryMax != null
                     ? `${opp.salaryMin.toLocaleString("ru-RU")}–${opp.salaryMax.toLocaleString("ru-RU")} ${opp.currency}`
@@ -231,8 +240,8 @@ export default function OpportunityPage() {
               {user?.role === "applicant" && (
                 <>
                   {alreadyApplied ? (
-                    <span className="rounded-xl border border-emerald-500/40 bg-emerald-500/10 px-5 py-3 text-sm font-medium text-emerald-200">
-                      Отклик отправлен · резюме у работодателя
+                    <span className="rounded-xl border border-emerald-500/40 bg-emerald-500/10 px-5 py-3 text-sm font-medium text-emerald-700 dark:text-emerald-300">
+                      Отклик уже отправлен
                     </span>
                   ) : (
                     <button
@@ -255,19 +264,6 @@ export default function OpportunityPage() {
             <YandexMap opportunities={[opp]} favoriteIds={favoriteIds} />
           </GlassPanel>
 
-          {user?.role === "applicant" && (
-            <GlassPanel className="p-6">
-              <h2 className="text-lg font-semibold text-[var(--text-primary)]">
-                Порекомендовать вакансию
-              </h2>
-              <p className="mt-2 text-sm text-[var(--text-secondary)]">
-                Отправьте эту вакансию своим контактам через Трамплин или мессенджеры.
-              </p>
-              <div className="mt-4">
-                <ShareMenu opportunityId={opp.id} />
-              </div>
-            </GlassPanel>
-          )}
         </div>
       </div>
 

@@ -14,6 +14,99 @@ import {
 } from "@/lib/api";
 import { useToast } from "@/hooks/useToast";
 
+const SKILL_PRESETS = [
+  "JavaScript", "TypeScript", "React", "Next.js", "Vue.js", "Angular",
+  "Node.js", "Python", "Go", "Java", "C++", "Rust",
+  "PostgreSQL", "MongoDB", "Redis", "Docker", "Kubernetes", "CI/CD",
+  "Git", "REST API", "GraphQL", "HTML/CSS", "Tailwind CSS", "Figma",
+  "UI/UX", "Photoshop", "Illustrator", "Blender", "Unity",
+  "Data Science", "Machine Learning", "TensorFlow", "PyTorch",
+  "Agile", "Scrum", "Product Management", "Marketing", "SEO",
+  "1С", "Excel", "Power BI", "Tableau", "R",
+  "iOS", "Android", "Flutter", "React Native", "Swift", "Kotlin",
+  "Linux", "Nginx", "AWS", "GCP", "Azure",
+];
+
+function SkillPicker({ selected, onChange }: { selected: string[]; onChange: (skills: string[]) => void }) {
+  const [search, setSearch] = useState("");
+  const [customInput, setCustomInput] = useState("");
+
+  const filtered = SKILL_PRESETS.filter(
+    (s) => !selected.includes(s) && s.toLowerCase().includes(search.toLowerCase()),
+  ).slice(0, 12);
+
+  const add = (skill: string) => {
+    if (!selected.includes(skill)) onChange([...selected, skill]);
+    setSearch("");
+    setCustomInput("");
+  };
+  const remove = (skill: string) => onChange(selected.filter((s) => s !== skill));
+
+  const addCustom = () => {
+    const val = customInput.trim();
+    if (val && !selected.includes(val)) {
+      onChange([...selected, val]);
+      setCustomInput("");
+    }
+  };
+
+  return (
+    <div className="space-y-2">
+      <label className="text-xs font-medium text-[var(--text-secondary)]">Навыки</label>
+      {selected.length > 0 && (
+        <div className="flex flex-wrap gap-1.5">
+          {selected.map((s) => (
+            <span
+              key={s}
+              className="inline-flex items-center gap-1 rounded-full bg-[var(--brand-cyan)]/15 px-2.5 py-1 text-xs font-medium text-[var(--brand-cyan)]"
+            >
+              {s}
+              <button type="button" onClick={() => remove(s)} className="ml-0.5 hover:opacity-70">×</button>
+            </span>
+          ))}
+        </div>
+      )}
+      <input
+        className="glass-input w-full px-4 py-2.5 text-sm"
+        placeholder="Найти навык..."
+        value={search}
+        onChange={(e) => setSearch(e.target.value)}
+      />
+      {search && filtered.length > 0 && (
+        <div className="flex flex-wrap gap-1.5">
+          {filtered.map((s) => (
+            <button
+              key={s}
+              type="button"
+              onClick={() => add(s)}
+              className="rounded-full border border-[var(--glass-border)] px-2.5 py-1 text-xs text-[var(--text-secondary)] transition hover:bg-[var(--glass-bg-strong)] hover:text-[var(--text-primary)]"
+            >
+              + {s}
+            </button>
+          ))}
+        </div>
+      )}
+      <div className="flex gap-2">
+        <input
+          className="glass-input flex-1 px-3 py-2 text-sm"
+          placeholder="Свой навык..."
+          value={customInput}
+          onChange={(e) => setCustomInput(e.target.value)}
+          onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); addCustom(); } }}
+        />
+        <button
+          type="button"
+          onClick={addCustom}
+          disabled={!customInput.trim()}
+          className="rounded-lg bg-[var(--glass-bg-strong)] px-3 py-2 text-xs text-[var(--text-primary)] disabled:opacity-40"
+        >
+          Добавить
+        </button>
+      </div>
+    </div>
+  );
+}
+
 const tabs = [
   { id: "profile", label: "Профиль" },
   { id: "resume", label: "Резюме" },
@@ -28,17 +121,16 @@ function profileCompletion(p: ApplicantProfile) {
   let score = 0;
   const r = p.resume;
   const checks = [
-    p.fullName.length > 2,
-    p.university.length > 1,
+    p.fullName.length > 0,
+    p.university.length > 0,
     p.courseOrYear.length > 0,
     p.skills.length > 0,
-    p.bio.length > 10,
-    p.repoLinks.length > 0,
+    p.bio.length > 0,
     !!p.avatarDataUrl,
-    r.headline.length > 3,
-    r.summary.length > 20,
-    r.experience.length > 15,
-    r.education.length > 5,
+    r.headline.length > 0,
+    r.summary.length > 0,
+    r.experience.length > 0,
+    r.education.length > 0,
   ];
   checks.forEach((c) => {
     if (c) score += 1;
@@ -171,21 +263,10 @@ export function ApplicantCabinet() {
               value={profile.courseOrYear}
               onChange={(v) => updateApplicant({ courseOrYear: v })}
             />
-            <div>
-              <label className="text-xs font-medium text-[var(--text-secondary)]">Навыки (через запятую)</label>
-              <input
-                className="glass-input mt-1 w-full px-4 py-3 text-sm"
-                value={profile.skills.join(", ")}
-                onChange={(e) =>
-                  updateApplicant({
-                    skills: e.target.value
-                      .split(",")
-                      .map((s) => s.trim())
-                      .filter(Boolean),
-                  })
-                }
-              />
-            </div>
+            <SkillPicker
+              selected={profile.skills}
+              onChange={(skills) => updateApplicant({ skills })}
+            />
             <div>
               <label className="text-xs font-medium text-[var(--text-secondary)]">О себе</label>
               <textarea

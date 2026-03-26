@@ -38,7 +38,7 @@ export default function DoughnutChart({ stats }: { stats: AdminStats }) {
     plugins: {
       legend: {
         position: "bottom" as const,
-        labels: { color: "#e2e8f0" },
+        labels: { color: "#64748b" },
       },
     },
   };

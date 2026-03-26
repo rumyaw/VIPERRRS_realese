@@ -178,6 +178,7 @@ export async function createEmployerOpportunity(input: {
   salaryMin?: number;
   salaryMax?: number;
   currency?: string;
+  validUntil?: string;
 }): Promise<Opportunity> {
   const data = await apiFetch<OpportunityApi>("/employer/opportunities", {
     method: "POST",
@@ -333,6 +334,7 @@ export type EmployerProfileDTO = {
   website: string;
   socials: string;
   inn: string;
+  logoDataUrl?: string;
 };
 
 export async function updateEmployerProfile(input: EmployerProfileDTO): Promise<void> {
@@ -438,4 +440,86 @@ export type PublicEmployerProfileApi = {
 
 export async function fetchPublicEmployerProfile(userId: string): Promise<PublicEmployerProfileApi> {
   return await apiFetch<PublicEmployerProfileApi>(`/employer/public-profile/${encodeURIComponent(userId)}`, { method: "GET" });
+}
+
+// --- Admin User Management ---
+
+export type AdminUser = {
+  id: string;
+  email: string;
+  displayName: string;
+  role: string;
+  createdAt: string;
+};
+
+export type AdminUsersResponse = {
+  items: AdminUser[];
+  total: number;
+  page: number;
+  limit: number;
+};
+
+export async function fetchAdminUsers(params?: { page?: number; limit?: number; role?: string; q?: string }): Promise<AdminUsersResponse> {
+  const sp = new URLSearchParams();
+  if (params?.page) sp.set("page", String(params.page));
+  if (params?.limit) sp.set("limit", String(params.limit));
+  if (params?.role) sp.set("role", params.role);
+  if (params?.q) sp.set("q", params.q);
+  return await apiFetch<AdminUsersResponse>(`/admin/users?${sp.toString()}`, { method: "GET" });
+}
+
+export async function fetchAdminUser(userId: string): Promise<AdminUser> {
+  return await apiFetch<AdminUser>(`/admin/users/${encodeURIComponent(userId)}`, { method: "GET" });
+}
+
+export async function updateAdminUser(userId: string, data: { displayName?: string; email?: string; role?: string }): Promise<void> {
+  await apiFetch<{ ok: boolean }>(`/admin/users/${encodeURIComponent(userId)}`, {
+    method: "PATCH",
+    body: JSON.stringify(data),
+  });
+}
+
+export async function deleteAdminUser(userId: string): Promise<void> {
+  await apiFetch<{ ok: boolean }>(`/admin/users/${encodeURIComponent(userId)}`, { method: "DELETE" });
+}
+
+export async function createAdminUser(data: { email: string; displayName: string; password: string; role: string }): Promise<{ id: string }> {
+  return await apiFetch<{ id: string }>("/admin/users", {
+    method: "POST",
+    body: JSON.stringify(data),
+  });
+}
+
+// --- Admin Opportunity Management ---
+
+export type AdminOpportunity = {
+  id: string;
+  title: string;
+  companyName: string;
+  type: string;
+  moderationStatus: string;
+  createdAt: string;
+};
+
+export type AdminOpportunitiesResponse = {
+  items: AdminOpportunity[];
+  total: number;
+  page: number;
+  limit: number;
+};
+
+export async function fetchAdminOpportunities(params?: { page?: number; limit?: number; status?: string }): Promise<AdminOpportunitiesResponse> {
+  const sp = new URLSearchParams();
+  if (params?.page) sp.set("page", String(params.page));
+  if (params?.limit) sp.set("limit", String(params.limit));
+  if (params?.status) sp.set("status", params.status);
+  return await apiFetch<AdminOpportunitiesResponse>(`/admin/opportunities?${sp.toString()}`, { method: "GET" });
+}
+
+export async function deleteAdminOpportunity(opportunityId: string): Promise<void> {
+  await apiFetch<{ ok: boolean }>(`/admin/opportunities/${encodeURIComponent(opportunityId)}`, { method: "DELETE" });
+}
+
+export function getAdminExportUrl(format: "csv" | "json"): string {
+  return `${API_BASE}/admin/export?format=${format}`;
 }

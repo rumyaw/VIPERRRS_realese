@@ -98,12 +98,34 @@ export default function AdminDashboardPage() {
           <h1 className="text-2xl font-bold text-[var(--text-primary)]">Панель администратора</h1>
           <p className="mt-1 text-[var(--text-secondary)]">Куратор платформы</p>
         </div>
-        <Link
-          href="/"
-          className="rounded-xl border border-[var(--glass-border)] bg-[var(--glass-bg)] px-4 py-2 text-sm text-[var(--text-secondary)] transition hover:text-[var(--text-primary)]"
-        >
-          ← На главную
-        </Link>
+        <div className="flex gap-2">
+          <Link
+            href="/admin/users"
+            className="rounded-xl border border-[var(--glass-border)] bg-[var(--glass-bg)] px-4 py-2 text-sm text-[var(--text-secondary)] transition hover:text-[var(--text-primary)]"
+          >
+            Пользователи
+          </Link>
+          <Link
+            href="/admin/opportunities"
+            className="rounded-xl border border-[var(--glass-border)] bg-[var(--glass-bg)] px-4 py-2 text-sm text-[var(--text-secondary)] transition hover:text-[var(--text-primary)]"
+          >
+            Карточки
+          </Link>
+          <a
+            href="http://localhost:3001"
+            target="_blank"
+            rel="noreferrer"
+            className="rounded-xl border border-[var(--glass-border)] bg-[var(--glass-bg)] px-4 py-2 text-sm text-[var(--text-secondary)] transition hover:text-[var(--text-primary)]"
+          >
+            Grafana
+          </a>
+          <Link
+            href="/"
+            className="rounded-xl border border-[var(--glass-border)] bg-[var(--glass-bg)] px-4 py-2 text-sm text-[var(--text-secondary)] transition hover:text-[var(--text-primary)]"
+          >
+            ← На главную
+          </Link>
+        </div>
       </div>
 
       {/* Stats Cards */}
@@ -149,12 +171,16 @@ export default function AdminDashboardPage() {
             <TrendingUp className="h-5 w-5 text-[var(--brand-cyan)]" />
             Активность за 30 дней
           </h3>
-          {timeline && <LineChart data={timeline} />}
+          <div className="h-[280px]">
+            {timeline && <LineChart data={timeline} />}
+          </div>
         </GlassPanel>
 
         <GlassPanel className="p-5">
           <h3 className="mb-4 text-lg font-semibold text-[var(--text-primary)]">Распределение по типам</h3>
-          {stats && <DoughnutChart stats={stats} />}
+          <div className="h-[280px]">
+            {stats && <DoughnutChart stats={stats} />}
+          </div>
         </GlassPanel>
       </div>
 
@@ -182,13 +208,13 @@ export default function AdminDashboardPage() {
                   <div className="flex gap-1">
                     <button
                       onClick={() => handleVerifyCompany(company.userId, true)}
-                      className="rounded bg-emerald-500/20 px-2 py-1 text-xs text-emerald-200 hover:bg-emerald-500/30"
+                      className="rounded bg-emerald-500/15 px-2 py-1 text-xs font-medium text-emerald-700 dark:text-emerald-300 hover:bg-emerald-500/25"
                     >
                       ✓
                     </button>
                     <button
                       onClick={() => handleVerifyCompany(company.userId, false)}
-                      className="rounded bg-red-500/20 px-2 py-1 text-xs text-red-200 hover:bg-red-500/30"
+                      className="rounded bg-red-500/15 px-2 py-1 text-xs font-medium text-red-700 dark:text-red-300 hover:bg-red-500/25"
                     >
                       ✕
                     </button>
@@ -220,13 +246,13 @@ export default function AdminDashboardPage() {
                   <div className="flex gap-1">
                     <button
                       onClick={() => handleModerateOpp(String(opp.id), "approved")}
-                      className="rounded bg-emerald-500/20 px-2 py-1 text-xs text-emerald-200 hover:bg-emerald-500/30"
+                      className="rounded bg-emerald-500/15 px-2 py-1 text-xs font-medium text-emerald-700 dark:text-emerald-300 hover:bg-emerald-500/25"
                     >
                       ✓
                     </button>
                     <button
                       onClick={() => handleModerateOpp(String(opp.id), "rejected")}
-                      className="rounded bg-red-500/20 px-2 py-1 text-xs text-red-200 hover:bg-red-500/30"
+                      className="rounded bg-red-500/15 px-2 py-1 text-xs font-medium text-red-700 dark:text-red-300 hover:bg-red-500/25"
                     >
                       ✕
                     </button>

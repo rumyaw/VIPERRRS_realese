@@ -34,6 +34,7 @@ export default function CompanyPage() {
         website: emp.website,
         socials: emp.socials,
         inn: emp.inn,
+        logoDataUrl: emp.logoDataUrl ?? undefined,
       });
       setSaved(true);
       setTimeout(() => setSaved(false), 2000);
@@ -87,8 +88,8 @@ export default function CompanyPage() {
               className={cn(
                 "mt-3 inline-flex rounded-full px-3 py-1 text-xs font-medium",
                 emp.verified
-                  ? "bg-emerald-500/20 text-emerald-200"
-                  : "bg-amber-500/20 text-amber-100",
+                  ? "bg-emerald-500/15 text-emerald-700 dark:text-emerald-300"
+                  : "bg-amber-500/15 text-amber-700 dark:text-amber-200",
               )}
             >
               {emp.verified ? "Верифицировано" : "Ожидает верификации"}

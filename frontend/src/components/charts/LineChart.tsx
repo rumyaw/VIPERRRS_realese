@@ -54,7 +54,7 @@ export default function LineChart({ data }: { data: AdminTimeline }) {
     plugins: {
       legend: {
         position: "top" as const,
-        labels: { color: "#e2e8f0" },
+        labels: { color: "#64748b" },
       },
     },
     scales: {

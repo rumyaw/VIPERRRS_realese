@@ -330,6 +330,7 @@ type createOpportunityBody struct {
 	SalaryMin        *int           `json:"salaryMin,omitempty"`
 	SalaryMax        *int           `json:"salaryMax,omitempty"`
 	Currency         string         `json:"currency,omitempty"`
+	ValidUntil       *string        `json:"validUntil,omitempty"`
 }
 
 func (h *Cabinet) EmployerCreateOpportunity(w http.ResponseWriter, r *http.Request) {
@@ -341,6 +342,11 @@ func (h *Cabinet) EmployerCreateOpportunity(w http.ResponseWriter, r *http.Reque
 	userID, err := uuid.Parse(uid)
 	if err != nil {
 		respond.Error(w, http.StatusBadRequest, "invalid user id")
+		return
+	}
+	verified, vErr := h.Users.IsEmployerVerified(r.Context(), userID)
+	if vErr != nil || !verified {
+		respond.Error(w, http.StatusForbidden, "аккаунт не верифицирован")
 		return
 	}
 	var body createOpportunityBody
@@ -444,12 +450,13 @@ func (h *Cabinet) EmployerUpdateApplicationStatus(w http.ResponseWriter, r *http
 }
 
 type employerProfileBody struct {
-	CompanyName string `json:"companyName"`
-	Description string `json:"description"`
-	Industry    string `json:"industry"`
-	Website     string `json:"website"`
-	Socials     string `json:"socials"`
-	INN         string `json:"inn"`
+	CompanyName string  `json:"companyName"`
+	Description string  `json:"description"`
+	Industry    string  `json:"industry"`
+	Website     string  `json:"website"`
+	Socials     string  `json:"socials"`
+	INN         string  `json:"inn"`
+	LogoDataUrl *string `json:"logoDataUrl,omitempty"`
 }
 
 func (h *Cabinet) EmployerProfile(w http.ResponseWriter, r *http.Request) {
@@ -468,7 +475,7 @@ func (h *Cabinet) EmployerProfile(w http.ResponseWriter, r *http.Request) {
 		respond.Error(w, http.StatusBadRequest, "invalid json")
 		return
 	}
-	if err := h.Users.UpdateEmployerProfile(r.Context(), userID, body.CompanyName, body.Description, body.Industry, body.Website, body.Socials, body.INN); err != nil {
+	if err := h.Users.UpdateEmployerProfile(r.Context(), userID, body.CompanyName, body.Description, body.Industry, body.Website, body.Socials, body.INN, body.LogoDataUrl); err != nil {
 		respond.Error(w, http.StatusBadRequest, "failed to update profile")
 		return
 	}

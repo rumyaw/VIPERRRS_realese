@@ -332,7 +332,21 @@ WHERE user_id = $1`
 	return nil
 }
 
-func (r *UserRepository) UpdateEmployerProfile(ctx context.Context, userID uuid.UUID, companyName, description, industry, website, socials, inn string) error {
+func (r *UserRepository) UpdateEmployerProfile(ctx context.Context, userID uuid.UUID, companyName, description, industry, website, socials, inn string, logoDataUrl *string) error {
+	if logoDataUrl != nil {
+		const q = `
+UPDATE employer_profiles
+SET company_name = $2, description = $3, industry = $4, website = $5, socials = $6, inn = $7, logo_url = $8, updated_at = now()
+WHERE user_id = $1`
+		res, err := r.pool.Exec(ctx, q, userID, companyName, description, industry, website, socials, inn, *logoDataUrl)
+		if err != nil {
+			return err
+		}
+		if res.RowsAffected() == 0 {
+			return fmt.Errorf("employer profile not found")
+		}
+		return nil
+	}
 	const q = `
 UPDATE employer_profiles
 SET company_name = $2, description = $3, industry = $4, website = $5, socials = $6, inn = $7, updated_at = now()
@@ -795,6 +809,15 @@ type PublicEmployerProfile struct {
 	Website     string
 	Verified    bool
 	LogoURL     *string
+}
+
+func (r *UserRepository) IsEmployerVerified(ctx context.Context, userID uuid.UUID) (bool, error) {
+	var verified bool
+	err := r.pool.QueryRow(ctx, `SELECT verified FROM employer_profiles WHERE user_id = $1`, userID).Scan(&verified)
+	if err != nil {
+		return false, err
+	}
+	return verified, nil
 }
 
 func (r *UserRepository) GetPublicEmployerProfile(ctx context.Context, userID uuid.UUID) (*PublicEmployerProfile, error) {

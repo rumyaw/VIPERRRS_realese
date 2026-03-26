@@ -12,12 +12,15 @@ import type { Opportunity, OpportunityType, WorkFormat } from "@/lib/types";
 import { cn } from "@/lib/cn";
 import { useToast } from "@/hooks/useToast";
 
+const noSalaryTypes: OpportunityType[] = ["event", "mentorship"];
+
 export default function CreateOpportunityPage() {
   const { user } = useAuth();
   const router = useRouter();
   const { showToast } = useToast();
   const [saving, setSaving] = useState(false);
   const [selectedCoords, setSelectedCoords] = useState<[number, number] | null>(null);
+  const [geocoding, setGeocoding] = useState(false);
 
   useEffect(() => {
     if (!user || user.role !== "employer") {
@@ -37,15 +40,61 @@ export default function CreateOpportunityPage() {
     currency: "RUB",
     tags: "",
     mediaUrl: "" as string,
+    validUntil: "",
   });
 
   const emp = user?.employer;
   if (!emp) return null;
 
+  if (!emp.verified) {
+    return (
+      <div className="mx-auto max-w-3xl py-12">
+        <GlassPanel className="p-8 text-center">
+          <h2 className="text-xl font-bold text-[var(--text-primary)]">Аккаунт не верифицирован</h2>
+          <p className="mt-3 text-[var(--text-secondary)]">
+            Для публикации карточек возможностей необходимо пройти верификацию компании.
+            Обратитесь к куратору платформы.
+          </p>
+          <Link href="/employer/company" className="mt-4 inline-block text-sm text-[var(--brand-cyan)] hover:underline">
+            ← Профиль компании
+          </Link>
+        </GlassPanel>
+      </div>
+    );
+  }
+
+  const geocodeAddress = async () => {
+    if (!form.locationLabel.trim()) return;
+    const apiKey = process.env.NEXT_PUBLIC_YANDEX_MAPS_API_KEY;
+    if (!apiKey) {
+      showToast("Ключ Яндекс.Карт не настроен", "error");
+      return;
+    }
+    setGeocoding(true);
+    try {
+      const url = `https://geocode-maps.yandex.ru/1.x/?apikey=${encodeURIComponent(apiKey)}&geocode=${encodeURIComponent(form.locationLabel)}&format=json&results=1`;
+      const res = await fetch(url);
+      const data = await res.json();
+      const pos = data?.response?.GeoObjectCollection?.featureMember?.[0]?.GeoObject?.Point?.pos;
+      if (pos) {
+        const [lon, lat] = pos.split(" ").map(Number);
+        setSelectedCoords([lat, lon]);
+        showToast("Адрес найден на карте", "success");
+      } else {
+        showToast("Адрес не найден. Укажите точку на карте вручную", "info");
+      }
+    } catch {
+      showToast("Ошибка геокодирования", "error");
+    } finally {
+      setGeocoding(false);
+    }
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setSaving(true);
     try {
+      const isFree = noSalaryTypes.includes(form.type);
       await createEmployerOpportunity({
         title: form.title,
         shortDescription: form.shortDescription,
@@ -60,12 +109,13 @@ export default function CreateOpportunityPage() {
         tags: form.tags.split(",").map(t => t.trim()).filter(Boolean),
         level: "junior",
         employment: "full",
-        salaryMin: form.salaryMin ? parseInt(form.salaryMin) : undefined,
-        salaryMax: form.salaryMax ? parseInt(form.salaryMax) : undefined,
+        salaryMin: isFree ? undefined : (form.salaryMin ? parseInt(form.salaryMin) : undefined),
+        salaryMax: isFree ? undefined : (form.salaryMax ? parseInt(form.salaryMax) : undefined),
         currency: form.currency,
         mediaUrl: form.mediaUrl || undefined,
+        validUntil: form.validUntil || undefined,
       });
-      showToast("Карточка успешно создана", "success");
+      showToast("Карточка отправлена на модерацию", "success");
       router.push("/employer/opportunities");
     } catch (e) {
       console.error(e);
@@ -147,7 +197,7 @@ export default function CreateOpportunityPage() {
                 className="glass-input mt-1 min-h-[120px] w-full px-4 py-3 text-sm"
                 value={form.fullDescription}
                 onChange={(e) => setForm(f => ({ ...f, fullDescription: e.target.value }))}
-                placeholder="Детальное описание вакансии, условия, требования"
+                placeholder="Детальное описание, условия, требования"
               />
             </div>
 
@@ -162,7 +212,7 @@ export default function CreateOpportunityPage() {
                   <option value="internship">Стажировка</option>
                   <option value="vacancy_junior">Вакансия Junior</option>
                   <option value="vacancy_senior">Вакансия Middle+</option>
-                  <option value="mentorship">Менторство</option>
+                  <option value="mentorship">Менторская программа</option>
                   <option value="event">Мероприятие</option>
                 </select>
               </div>
@@ -182,49 +232,71 @@ export default function CreateOpportunityPage() {
 
             <div>
               <label className="text-sm font-medium text-[var(--text-secondary)]">Адрес / Локация</label>
+              <div className="mt-1 flex gap-2">
+                <input
+                  type="text"
+                  className="glass-input flex-1 px-4 py-3 text-sm"
+                  value={form.locationLabel}
+                  onChange={(e) => setForm(f => ({ ...f, locationLabel: e.target.value }))}
+                  placeholder="Москва, ул. Примерная, 1"
+                />
+                <button
+                  type="button"
+                  onClick={geocodeAddress}
+                  disabled={geocoding || !form.locationLabel.trim()}
+                  className="shrink-0 rounded-xl bg-[var(--glass-bg-strong)] px-4 py-2 text-sm text-[var(--text-primary)] transition hover:bg-[var(--glass-bg)] disabled:opacity-50"
+                >
+                  {geocoding ? "..." : "Найти"}
+                </button>
+              </div>
+            </div>
+
+            <div>
+              <label className="text-sm font-medium text-[var(--text-secondary)]">Действительно до</label>
               <input
-                type="text"
+                type="date"
                 className="glass-input mt-1 w-full px-4 py-3 text-sm"
-                value={form.locationLabel}
-                onChange={(e) => setForm(f => ({ ...f, locationLabel: e.target.value }))}
-                placeholder="Москва, ул. Примерная, 1"
+                value={form.validUntil}
+                onChange={(e) => setForm(f => ({ ...f, validUntil: e.target.value }))}
               />
             </div>
 
-            <div className="grid gap-4 sm:grid-cols-3">
-              <div>
-                <label className="text-sm font-medium text-[var(--text-secondary)]">Зарплата от</label>
-                <input
-                  type="number"
-                  className="glass-input mt-1 w-full px-4 py-3 text-sm"
-                  value={form.salaryMin}
-                  onChange={(e) => setForm(f => ({ ...f, salaryMin: e.target.value }))}
-                  placeholder="80000"
-                />
+            {!noSalaryTypes.includes(form.type) && (
+              <div className="grid gap-4 sm:grid-cols-3">
+                <div>
+                  <label className="text-sm font-medium text-[var(--text-secondary)]">Зарплата от</label>
+                  <input
+                    type="number"
+                    className="glass-input mt-1 w-full px-4 py-3 text-sm"
+                    value={form.salaryMin}
+                    onChange={(e) => setForm(f => ({ ...f, salaryMin: e.target.value }))}
+                    placeholder="80000"
+                  />
+                </div>
+                <div>
+                  <label className="text-sm font-medium text-[var(--text-secondary)]">Зарплата до</label>
+                  <input
+                    type="number"
+                    className="glass-input mt-1 w-full px-4 py-3 text-sm"
+                    value={form.salaryMax}
+                    onChange={(e) => setForm(f => ({ ...f, salaryMax: e.target.value }))}
+                    placeholder="120000"
+                  />
+                </div>
+                <div>
+                  <label className="text-sm font-medium text-[var(--text-secondary)]">Валюта</label>
+                  <select
+                    className="glass-select mt-1 w-full px-4 py-3 text-sm"
+                    value={form.currency}
+                    onChange={(e) => setForm(f => ({ ...f, currency: e.target.value }))}
+                  >
+                    <option value="RUB">RUB</option>
+                    <option value="USD">USD</option>
+                    <option value="EUR">EUR</option>
+                  </select>
+                </div>
               </div>
-              <div>
-                <label className="text-sm font-medium text-[var(--text-secondary)]">Зарплата до</label>
-                <input
-                  type="number"
-                  className="glass-input mt-1 w-full px-4 py-3 text-sm"
-                  value={form.salaryMax}
-                  onChange={(e) => setForm(f => ({ ...f, salaryMax: e.target.value }))}
-                  placeholder="120000"
-                />
-              </div>
-              <div>
-                <label className="text-sm font-medium text-[var(--text-secondary)]">Валюта</label>
-                <select
-                  className="glass-select mt-1 w-full px-4 py-3 text-sm"
-                  value={form.currency}
-                  onChange={(e) => setForm(f => ({ ...f, currency: e.target.value }))}
-                >
-                  <option value="RUB">RUB</option>
-                  <option value="USD">USD</option>
-                  <option value="EUR">EUR</option>
-                </select>
-              </div>
-            </div>
+            )}
 
             <div>
               <label className="text-sm font-medium text-[var(--text-secondary)]">Теги (через запятую)</label>
@@ -253,7 +325,6 @@ export default function CreateOpportunityPage() {
               />
               {form.mediaUrl && (
                 <div className="mt-2 flex items-center gap-2">
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
                   <img src={form.mediaUrl} alt="Preview" className="h-16 w-16 rounded-lg object-cover" />
                   <button
                     type="button"
@@ -274,7 +345,7 @@ export default function CreateOpportunityPage() {
                 saving && "opacity-70 cursor-not-allowed"
               )}
             >
-              {saving ? "Создание..." : "Создать карточку"}
+              {saving ? "Отправка..." : "Отправить на модерацию"}
             </button>
           </GlassPanel>
         </motion.form>
@@ -295,7 +366,7 @@ export default function CreateOpportunityPage() {
             />
             {selectedCoords && (
               <p className="mt-2 text-xs text-[var(--text-secondary)]">
-                Выбрано: {selectedCoords[0].toFixed(4)}, {selectedCoords[1].toFixed(4)}
+                Координаты: {selectedCoords[0].toFixed(4)}, {selectedCoords[1].toFixed(4)}
               </p>
             )}
           </GlassPanel>
@@ -303,9 +374,9 @@ export default function CreateOpportunityPage() {
           <GlassPanel className="p-4">
             <h3 className="mb-2 text-sm font-medium text-[var(--text-primary)]">Подсказки</h3>
             <ul className="space-y-2 text-xs text-[var(--text-secondary)]">
-              <li>• Укажите конкретный адрес для отображения на карте</li>
+              <li>• Введите адрес и нажмите «Найти» для геокодирования</li>
+              <li>• Или укажите точку на карте вручную</li>
               <li>• Добавьте зарплатную вилку для привлечения кандидатов</li>
-              <li>• Используйте релевантные теги для поиска</li>
               <li>• Карточка будет отправлена на модерацию</li>
             </ul>
           </GlassPanel>

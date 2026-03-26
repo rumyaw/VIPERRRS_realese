@@ -67,7 +67,7 @@ function StatCard({
         </div>
         <div>
           <p className="text-2xl font-bold text-[var(--text-primary)]">{value}</p>
-          <p className="text-sm text-[var(--text-secondary)]">{label}</p>
+          <p className="text-xs text-[var(--text-secondary)]">{label}</p>
         </div>
       </GlassPanel>
     </motion.div>
@@ -167,7 +167,7 @@ export default function EmployerStatsPage() {
     plugins: {
       legend: {
         position: "bottom" as const,
-        labels: { color: "var(--text-secondary)", padding: 16 },
+        labels: { color: "#64748b", padding: 16 },
       },
     },
   };
@@ -194,17 +194,17 @@ export default function EmployerStatsPage() {
     plugins: {
       legend: {
         position: "top" as const,
-        labels: { color: "var(--text-secondary)" },
+        labels: { color: "#64748b" },
       },
     },
     scales: {
       x: {
-        ticks: { color: "#94a3b8" },
-        grid: { color: "rgba(148, 163, 184, 0.1)" },
+        ticks: { color: "#64748b" },
+        grid: { color: "rgba(100, 116, 139, 0.15)" },
       },
       y: {
-        ticks: { color: "#94a3b8", stepSize: 1 },
-        grid: { color: "rgba(148, 163, 184, 0.1)" },
+        ticks: { color: "#64748b", stepSize: 1 },
+        grid: { color: "rgba(100, 116, 139, 0.15)" },
         beginAtZero: true,
       },
     },
@@ -237,7 +237,7 @@ export default function EmployerStatsPage() {
         </Link>
       </div>
 
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+      <div className="grid auto-rows-fr gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <StatCard
           label="Опубликовано карточек"
           value={opportunities.length}

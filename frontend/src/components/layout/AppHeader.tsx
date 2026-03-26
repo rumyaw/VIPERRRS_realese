@@ -20,6 +20,7 @@ import {
   Analytics01Icon,
   Building01Icon,
   DashboardSquare01Icon,
+  UserGroupIcon,
   Login01Icon,
   UserAdd01Icon,
   Logout01Icon,
@@ -56,7 +57,12 @@ function navFor(user: AuthUser | null): NavItem[] {
     ];
   }
   if (user.role === "curator") {
-    return [home, { href: "/admin/dashboard", label: "Управление", icon: DashboardSquare01Icon }];
+    return [
+      home,
+      { href: "/admin/dashboard", label: "Дашборд", icon: DashboardSquare01Icon },
+      { href: "/admin/users", label: "Пользователи", icon: UserGroupIcon },
+      { href: "/admin/opportunities", label: "Карточки", icon: Briefcase01Icon },
+    ];
   }
   return [home, { href: "/dashboard", label: "Кабинет", icon: Settings01Icon }];
 }

@@ -49,10 +49,10 @@ export default function ApplicantApplicationsPage() {
   };
 
   const statusConfig: Record<string, { label: string; color: string; icon: React.ReactNode }> = {
-    pending: { label: "На рассмотрении", color: "bg-amber-500/20 text-amber-200", icon: <HugeiconsIcon icon={Clock01Icon} size={16} /> },
-    accepted: { label: "Приглашение", color: "bg-emerald-500/20 text-emerald-200", icon: <HugeiconsIcon icon={CheckmarkCircle01Icon} size={16} /> },
-    rejected: { label: "Отказ", color: "bg-red-500/20 text-red-200", icon: <X className="h-4 w-4" /> },
-    reserve: { label: "В резерве", color: "bg-blue-500/20 text-blue-200", icon: <HugeiconsIcon icon={Clock01Icon} size={16} /> },
+    pending: { label: "На рассмотрении", color: "bg-amber-500/15 text-amber-700 dark:text-amber-300", icon: <HugeiconsIcon icon={Clock01Icon} size={16} /> },
+    accepted: { label: "Приглашение", color: "bg-emerald-500/15 text-emerald-700 dark:text-emerald-300", icon: <HugeiconsIcon icon={CheckmarkCircle01Icon} size={16} /> },
+    rejected: { label: "Отказ", color: "bg-red-500/15 text-red-700 dark:text-red-300", icon: <X className="h-4 w-4" /> },
+    reserve: { label: "В резерве", color: "bg-blue-500/15 text-blue-700 dark:text-blue-300", icon: <HugeiconsIcon icon={Clock01Icon} size={16} /> },
   };
 
   return (
@@ -102,9 +102,12 @@ export default function ApplicantApplicationsPage() {
                 <GlassPanel className="p-5">
                   <div className="flex flex-wrap items-start justify-between gap-4">
                     <div className="flex-1">
-                      <h3 className="text-lg font-semibold text-[var(--text-primary)]">
+                      <Link
+                        href={`/opportunities/${app.opportunityId}`}
+                        className="text-lg font-semibold text-[var(--text-primary)] hover:text-[var(--brand-cyan)] transition"
+                      >
                         {app.opp?.title || "Вакансия"}
-                      </h3>
+                      </Link>
                       <div className="mt-1 flex items-center gap-4 text-sm text-[var(--text-secondary)]">
                         <span className="flex items-center gap-1">
                           <HugeiconsIcon icon={Building01Icon} size={14} />

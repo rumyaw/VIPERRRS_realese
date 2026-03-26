@@ -28,6 +28,7 @@ export default function HomePage() {
   const [tag, setTag] = useState<string | "">("");
   const [format, setFormat] = useState<WorkFormat | "">("");
   const [city, setCity] = useState("");
+  const [typeFilter, setTypeFilter] = useState("");
   const [view, setView] = useState<"map" | "list">("map");
   const [popupId, setPopupId] = useState<string | null>(null);
   const [opportunities, setOpportunities] = useState<Opportunity[]>([]);
@@ -66,6 +67,7 @@ export default function HomePage() {
 
   const handleToggleFavorite = useCallback(
     (oppId: string) => {
+      if (user?.role === "curator") return;
       if (!user) {
         showToast("Войдите или зарегистрируйтесь, чтобы добавить в избранное", "info");
         return;
@@ -96,9 +98,10 @@ export default function HomePage() {
       if (tag && !o.tags.includes(tag)) return false;
       if (format && o.workFormat !== format) return false;
       if (city && !o.locationLabel.startsWith(city)) return false;
+      if (typeFilter && o.type !== typeFilter) return false;
       return true;
     });
-  }, [q, tag, format, city, opportunities, favoriteIds]);
+  }, [q, tag, format, city, typeFilter, opportunities, favoriteIds]);
 
   const popupOpp = useMemo(() => {
     if (!popupId) return null;
@@ -163,7 +166,7 @@ export default function HomePage() {
               onChange={(e) => setQ(e.target.value)}
             />
           </div>
-          <div className="grid flex-1 gap-3 sm:grid-cols-3">
+          <div className="grid flex-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
             <div className="space-y-2">
               <label className="text-xs font-medium text-[var(--text-secondary)]">Тег / стек</label>
               <select
@@ -205,6 +208,21 @@ export default function HomePage() {
                     {c}
                   </option>
                 ))}
+              </select>
+            </div>
+            <div className="space-y-2">
+              <label className="text-xs font-medium text-[var(--text-secondary)]">Тип</label>
+              <select
+                className="glass-select w-full px-4 py-3 text-sm outline-none"
+                value={typeFilter}
+                onChange={(e) => setTypeFilter(e.target.value)}
+              >
+                <option value="">Все типы</option>
+                <option value="vacancy_junior">Вакансия Junior</option>
+                <option value="vacancy_senior">Вакансия Middle+</option>
+                <option value="internship">Стажировка</option>
+                <option value="mentorship">Менторство</option>
+                <option value="event">Мероприятие</option>
               </select>
             </div>
           </div>
@@ -276,7 +294,7 @@ export default function HomePage() {
                       <OpportunityCard
                         opp={opp}
                         favorite
-                        onToggleFavorite={() => handleToggleFavorite(opp.id)}
+                        onToggleFavorite={user?.role !== "curator" ? () => handleToggleFavorite(opp.id) : undefined}
                         onRecommend={user?.role === "applicant" ? opp.id : undefined}
                       />
                     </div>
@@ -293,7 +311,7 @@ export default function HomePage() {
                 <OpportunityCard
                   opp={opp}
                   favorite={has(opp.id)}
-                  onToggleFavorite={() => handleToggleFavorite(opp.id)}
+                  onToggleFavorite={user?.role !== "curator" ? () => handleToggleFavorite(opp.id) : undefined}
                   onRecommend={user?.role === "applicant" ? opp.id : undefined}
                 />
               </div>
@@ -332,7 +350,7 @@ export default function HomePage() {
               opp={popupOpp}
               compact
               favorite={has(popupOpp.id)}
-              onToggleFavorite={user ? () => handleToggleFavorite(popupOpp.id) : undefined}
+              onToggleFavorite={user && user.role !== "curator" ? () => handleToggleFavorite(popupOpp.id) : undefined}
               onRecommend={user?.role === "applicant" ? popupOpp.id : undefined}
             />
           </motion.div>

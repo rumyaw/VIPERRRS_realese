@@ -1,0 +1,92 @@
+{
+  "annotations": { "list": [] },
+  "editable": true,
+  "fiscalYearStartMonth": 0,
+  "graphTooltip": 0,
+  "id": null,
+  "links": [],
+  "panels": [
+    {
+      "datasource": { "type": "postgres", "uid": "" },
+      "fieldConfig": {
+        "defaults": { "color": { "mode": "palette-classic" }, "thresholds": { "mode": "absolute", "steps": [{ "color": "green", "value": null }] } },
+        "overrides": []
+      },
+      "gridPos": { "h": 4, "w": 6, "x": 0, "y": 0 },
+      "id": 1,
+      "options": { "colorMode": "value", "graphMode": "area", "justifyMode": "auto", "textMode": "auto", "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false } },
+      "title": "Пользователей",
+      "type": "stat",
+      "targets": [{ "rawSql": "SELECT COUNT(*) AS value FROM users;", "format": "table", "refId": "A" }]
+    },
+    {
+      "datasource": { "type": "postgres", "uid": "" },
+      "fieldConfig": { "defaults": { "thresholds": { "mode": "absolute", "steps": [{ "color": "green", "value": null }] } }, "overrides": [] },
+      "gridPos": { "h": 4, "w": 6, "x": 6, "y": 0 },
+      "id": 2,
+      "options": { "colorMode": "value", "graphMode": "area", "justifyMode": "auto", "textMode": "auto", "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false } },
+      "title": "Карточек возможностей",
+      "type": "stat",
+      "targets": [{ "rawSql": "SELECT COUNT(*) AS value FROM opportunities;", "format": "table", "refId": "A" }]
+    },
+    {
+      "datasource": { "type": "postgres", "uid": "" },
+      "fieldConfig": { "defaults": { "thresholds": { "mode": "absolute", "steps": [{ "color": "green", "value": null }] } }, "overrides": [] },
+      "gridPos": { "h": 4, "w": 6, "x": 12, "y": 0 },
+      "id": 3,
+      "options": { "colorMode": "value", "graphMode": "area", "justifyMode": "auto", "textMode": "auto", "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false } },
+      "title": "Откликов",
+      "type": "stat",
+      "targets": [{ "rawSql": "SELECT COUNT(*) AS value FROM applications;", "format": "table", "refId": "A" }]
+    },
+    {
+      "datasource": { "type": "postgres", "uid": "" },
+      "fieldConfig": { "defaults": { "thresholds": { "mode": "absolute", "steps": [{ "color": "orange", "value": null }] } }, "overrides": [] },
+      "gridPos": { "h": 4, "w": 6, "x": 18, "y": 0 },
+      "id": 4,
+      "options": { "colorMode": "value", "graphMode": "area", "justifyMode": "auto", "textMode": "auto", "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false } },
+      "title": "На модерацию",
+      "type": "stat",
+      "targets": [{ "rawSql": "SELECT COUNT(*) AS value FROM opportunities WHERE moderation_status='pending';", "format": "table", "refId": "A" }]
+    },
+    {
+      "datasource": { "type": "postgres", "uid": "" },
+      "fieldConfig": { "defaults": { "color": { "mode": "palette-classic" } }, "overrides": [] },
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 4 },
+      "id": 5,
+      "options": { "legend": { "displayMode": "list", "placement": "bottom" }, "tooltip": { "mode": "single" } },
+      "title": "Регистрации за 30 дней",
+      "type": "timeseries",
+      "targets": [{ "rawSql": "SELECT DATE(created_at) AS time, COUNT(*) AS registrations FROM users WHERE created_at >= NOW() - INTERVAL '30 days' GROUP BY DATE(created_at) ORDER BY 1;", "format": "time_series", "refId": "A" }]
+    },
+    {
+      "datasource": { "type": "postgres", "uid": "" },
+      "fieldConfig": { "defaults": { "color": { "mode": "palette-classic" } }, "overrides": [] },
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 4 },
+      "id": 6,
+      "options": { "legend": { "displayMode": "list", "placement": "bottom" }, "tooltip": { "mode": "single" } },
+      "title": "Отклики за 30 дней",
+      "type": "timeseries",
+      "targets": [{ "rawSql": "SELECT DATE(created_at) AS time, COUNT(*) AS applications FROM applications WHERE created_at >= NOW() - INTERVAL '30 days' GROUP BY DATE(created_at) ORDER BY 1;", "format": "time_series", "refId": "A" }]
+    },
+    {
+      "datasource": { "type": "postgres", "uid": "" },
+      "fieldConfig": { "defaults": { "color": { "mode": "palette-classic" } }, "overrides": [] },
+      "gridPos": { "h": 8, "w": 24, "x": 0, "y": 12 },
+      "id": 7,
+      "options": { "legend": { "displayMode": "list", "placement": "bottom" }, "pieType": "donut", "tooltip": { "mode": "single" }, "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": true } },
+      "title": "Пользователи по ролям",
+      "type": "piechart",
+      "targets": [{ "rawSql": "SELECT role::text AS metric, COUNT(*) AS value FROM users GROUP BY role;", "format": "table", "refId": "A" }]
+    }
+  ],
+  "schemaVersion": 39,
+  "tags": ["tramplin"],
+  "templating": { "list": [] },
+  "time": { "from": "now-30d", "to": "now" },
+  "timepicker": {},
+  "timezone": "browser",
+  "title": "Трамплин — Обзор платформы",
+  "uid": "tramplin-overview",
+  "version": 1
+}

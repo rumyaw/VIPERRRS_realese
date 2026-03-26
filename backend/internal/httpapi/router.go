@@ -85,6 +85,14 @@ func NewRouter(
 
 			r.With(mw.RequireRoles("curator")).Get("/admin/stats", adminH.Stats)
 			r.With(mw.RequireRoles("curator")).Get("/admin/timeline", adminH.Timeline)
+			r.With(mw.RequireRoles("curator")).Get("/admin/users", adminH.ListUsers)
+			r.With(mw.RequireRoles("curator")).Get("/admin/users/{userId}", adminH.GetUser)
+			r.With(mw.RequireRoles("curator")).Patch("/admin/users/{userId}", adminH.UpdateUser)
+			r.With(mw.RequireRoles("curator")).Delete("/admin/users/{userId}", adminH.DeleteUser)
+			r.With(mw.RequireRoles("curator")).Post("/admin/users", adminH.CreateUser)
+			r.With(mw.RequireRoles("curator")).Get("/admin/opportunities", adminH.ListAllOpportunities)
+			r.With(mw.RequireRoles("curator")).Delete("/admin/opportunities/{opportunityId}", adminH.DeleteOpportunity)
+			r.With(mw.RequireRoles("curator")).Get("/admin/export", adminH.ExportStats)
 		})
 	})
 
