@@ -7,10 +7,11 @@ import (
 	"fmt"
 	"time"
 
+	"tramplin/internal/domain"
+
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
-	"tramplin/internal/domain"
 )
 
 type OpportunityRepository struct {
@@ -41,7 +42,7 @@ func (r *OpportunityRepository) List(ctx context.Context, limit, offset int) ([]
 SELECT id, author_id, title, short_description, full_description, company_name,
        type::text, work_format::text, location_label, lon, lat,
        published_at, valid_until, event_at, salary_min, salary_max, currency,
-       contacts, tags, level, employment::text, media_url, created_at, updated_at
+       contacts, tags, level, employment::text, media_url, moderation_status, view_count, created_at, updated_at
 FROM opportunities
 WHERE moderation_status = 'approved'
 ORDER BY published_at DESC NULLS LAST, created_at DESC
@@ -59,10 +60,35 @@ func (r *OpportunityRepository) GetByID(ctx context.Context, id uuid.UUID) (*dom
 SELECT id, author_id, title, short_description, full_description, company_name,
        type::text, work_format::text, location_label, lon, lat,
        published_at, valid_until, event_at, salary_min, salary_max, currency,
-       contacts, tags, level, employment::text, media_url, created_at, updated_at
+       contacts, tags, level, employment::text, media_url, moderation_status, view_count, created_at, updated_at
 FROM opportunities
 WHERE id = $1 AND moderation_status = 'approved'`
 	row := r.pool.QueryRow(ctx, q, id)
+	return scanOpportunityByID(row)
+}
+
+func (r *OpportunityRepository) GetByIDUnrestricted(ctx context.Context, id uuid.UUID) (*domain.Opportunity, error) {
+	const q = `
+SELECT id, author_id, title, short_description, full_description, company_name,
+       type::text, work_format::text, location_label, lon, lat,
+       published_at, valid_until, event_at, salary_min, salary_max, currency,
+       contacts, tags, level, employment::text, media_url, moderation_status, view_count, created_at, updated_at
+FROM opportunities
+WHERE id = $1`
+	row := r.pool.QueryRow(ctx, q, id)
+	return scanOpportunityByID(row)
+}
+
+// GetByIDForAuthor возвращает карточку только если она принадлежит работодателю (любой статус модерации).
+func (r *OpportunityRepository) GetByIDForAuthor(ctx context.Context, id, authorID uuid.UUID) (*domain.Opportunity, error) {
+	const q = `
+SELECT id, author_id, title, short_description, full_description, company_name,
+       type::text, work_format::text, location_label, lon, lat,
+       published_at, valid_until, event_at, salary_min, salary_max, currency,
+       contacts, tags, level, employment::text, media_url, moderation_status, view_count, created_at, updated_at
+FROM opportunities
+WHERE id = $1 AND author_id = $2`
+	row := r.pool.QueryRow(ctx, q, id, authorID)
 	return scanOpportunityByID(row)
 }
 
@@ -85,7 +111,7 @@ func scanOneOpportunity(row pgx.Row) (*domain.Opportunity, error) {
 		&o.ID, &o.AuthorID, &o.Title, &o.ShortDescription, &o.FullDescription, &o.CompanyName,
 		&o.Type, &o.WorkFormat, &o.LocationLabel, &o.Lon, &o.Lat,
 		&o.PublishedAt, &o.ValidUntil, &o.EventAt, &o.SalaryMin, &o.SalaryMax, &o.Currency,
-		&contacts, &o.Tags, &o.Level, &o.Employment, &o.MediaURL, &o.CreatedAt, &o.UpdatedAt,
+		&contacts, &o.Tags, &o.Level, &o.Employment, &o.MediaURL, &o.ModerationStatus, &o.ViewCount, &o.CreatedAt, &o.UpdatedAt,
 	)
 	if err != nil {
 		return nil, err
@@ -113,7 +139,7 @@ func (r *OpportunityRepository) ListByAuthor(ctx context.Context, authorID uuid.
 SELECT id, author_id, title, short_description, full_description, company_name,
        type::text, work_format::text, location_label, lon, lat,
        published_at, valid_until, event_at, salary_min, salary_max, currency,
-       contacts, tags, level, employment::text, media_url, created_at, updated_at
+       contacts, tags, level, employment::text, media_url, moderation_status, view_count, created_at, updated_at
 FROM opportunities
 WHERE author_id = $1
 ORDER BY created_at DESC
@@ -137,6 +163,7 @@ func (r *OpportunityRepository) CreateByEmployer(
 	mediaURL *string,
 	salaryMin, salaryMax *int,
 	currency string,
+	validUntil, eventAt *time.Time,
 ) (*domain.Opportunity, error) {
 	contactsJSON, err := json.Marshal(contacts)
 	if err != nil {
@@ -146,22 +173,23 @@ func (r *OpportunityRepository) CreateByEmployer(
 INSERT INTO opportunities (
   author_id, title, short_description, full_description, company_name,
   type, work_format, location_label, lon, lat, contacts, tags, level, employment,
-  media_url, salary_min, salary_max, currency, moderation_status
+  media_url, salary_min, salary_max, currency, moderation_status, valid_until, event_at
 ) VALUES (
   $1, $2, $3, $4, $5,
   $6::opportunity_type, $7::work_format, $8, $9, $10, $11::jsonb, $12::text[], $13, $14::employment_type,
-  $15, $16, $17, $18, 'pending'
+  $15, $16, $17, $18, 'pending', $19, $20
 )
 RETURNING id, author_id, title, short_description, full_description, company_name,
           type::text, work_format::text, location_label, lon, lat,
           published_at, valid_until, event_at, salary_min, salary_max, currency,
-          contacts, tags, level, employment::text, media_url, created_at, updated_at`
+          contacts, tags, level, employment::text, media_url, moderation_status, view_count, created_at, updated_at`
 	row := r.pool.QueryRow(
 		ctx,
 		q,
 		authorID, title, shortDescription, fullDescription, companyName,
 		typ, workFormat, locationLabel, lon, lat, string(contactsJSON), tags, level, employment,
 		mediaURL, salaryMin, salaryMax, currency,
+		validUntil, eventAt,
 	)
 	return scanOpportunityByID(row)
 }
@@ -282,12 +310,12 @@ ORDER BY o.created_at DESC`
 			return nil, err
 		}
 		out = append(out, map[string]any{
-			"id":         oppID.String(),
-			"title":      title,
+			"id":          oppID.String(),
+			"title":       title,
 			"companyName": companyName,
-			"type":       typ,
-			"workFormat": workFormat,
-			"createdAt":  createdAt.Format(time.RFC3339),
+			"type":        typ,
+			"workFormat":  workFormat,
+			"createdAt":   createdAt.Format(time.RFC3339),
 			"author": map[string]any{
 				"id":          authorID.String(),
 				"email":       email,
@@ -308,4 +336,11 @@ func (r *OpportunityRepository) SetOpportunityModerationStatus(ctx context.Conte
 		return fmt.Errorf("opportunity not found")
 	}
 	return nil
+}
+
+func (r *OpportunityRepository) IncrementViewCount(ctx context.Context, id uuid.UUID) error {
+	const q = `UPDATE opportunities SET view_count = view_count + 1, updated_at = now()
+WHERE id = $1 AND moderation_status = 'approved'`
+	_, err := r.pool.Exec(ctx, q, id)
+	return err
 }

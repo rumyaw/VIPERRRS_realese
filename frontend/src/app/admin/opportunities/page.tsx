@@ -15,6 +15,7 @@ import {
 } from "@/lib/api";
 import { cn } from "@/lib/cn";
 import { useToast } from "@/hooks/useToast";
+import { moderationStatusBadge, moderationIconButton } from "@/lib/status-badges";
 import { HugeiconsIcon } from "@hugeicons/react";
 import { Delete01Icon, CheckmarkCircle01Icon, Cancel01Icon, Download01Icon } from "@hugeicons/core-free-icons";
 
@@ -27,9 +28,9 @@ const TYPE_LABELS: Record<string, string> = {
 };
 
 const STATUS_LABELS: Record<string, { label: string; color: string }> = {
-  approved: { label: "Одобрено", color: "bg-emerald-500/15 text-emerald-700 dark:text-emerald-300" },
-  pending: { label: "На модерации", color: "bg-amber-500/15 text-amber-700 dark:text-amber-300" },
-  rejected: { label: "Отклонено", color: "bg-red-500/15 text-red-700 dark:text-red-300" },
+  approved: { label: "Одобрено", color: moderationStatusBadge.approved },
+  pending: { label: "На модерации", color: moderationStatusBadge.pending },
+  rejected: { label: "Отклонено", color: moderationStatusBadge.rejected },
 };
 
 export default function AdminOpportunitiesPage() {
@@ -154,7 +155,7 @@ export default function AdminOpportunitiesPage() {
                   <GlassPanel className="flex flex-wrap items-center justify-between gap-3 p-4">
                     <div className="flex-1 min-w-0">
                       <Link
-                        href={`/opportunities/${opp.id}`}
+                        href={`/admin/opportunities/${opp.id}`}
                         className="font-medium text-[var(--text-primary)] hover:text-[var(--brand-cyan)] truncate transition"
                       >
                         {opp.title}
@@ -172,7 +173,7 @@ export default function AdminOpportunitiesPage() {
                       {opp.moderationStatus !== "approved" && (
                         <button
                           onClick={() => handleModerate(opp.id, "approved")}
-                          className="rounded-lg bg-emerald-500/10 p-2 text-emerald-600 dark:text-emerald-400 transition hover:bg-emerald-500/20"
+                          className={`rounded-lg p-2 transition ${moderationIconButton.approve}`}
                           title="Одобрить"
                         >
                           <HugeiconsIcon icon={CheckmarkCircle01Icon} size={16} />
@@ -181,7 +182,7 @@ export default function AdminOpportunitiesPage() {
                       {opp.moderationStatus !== "rejected" && (
                         <button
                           onClick={() => handleModerate(opp.id, "rejected")}
-                          className="rounded-lg bg-amber-500/10 p-2 text-amber-600 dark:text-amber-400 transition hover:bg-amber-500/20"
+                          className={`rounded-lg p-2 transition ${moderationIconButton.reject}`}
                           title="Отклонить"
                         >
                           <HugeiconsIcon icon={Cancel01Icon} size={16} />
@@ -189,7 +190,7 @@ export default function AdminOpportunitiesPage() {
                       )}
                       <button
                         onClick={() => handleDelete(opp.id)}
-                        className="rounded-lg bg-red-500/10 p-2 text-red-400 transition hover:bg-red-500/20"
+                        className={`rounded-lg p-2 transition ${moderationIconButton.delete}`}
                         title="Удалить"
                       >
                         <HugeiconsIcon icon={Delete01Icon} size={16} />

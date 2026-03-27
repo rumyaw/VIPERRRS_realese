@@ -55,6 +55,9 @@ export interface Opportunity {
   level: "intern" | "junior" | "middle" | "senior";
   employment: EmploymentType;
   mediaUrl?: string;
+  /** Просмотры страницы карточки (для статистики работодателя) */
+  viewCount?: number;
+  moderationStatus?: string;
 }
 
 export interface ApplicantProfile {

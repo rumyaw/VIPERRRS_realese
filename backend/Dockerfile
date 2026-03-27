@@ -10,6 +10,9 @@ RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -o /out/tramplin-api ./cmd/ap
 
 FROM alpine:3.20
 
+# wget нужен для healthcheck в docker-compose (в базовом Alpine его нет)
+RUN apk add --no-cache wget
+
 WORKDIR /srv
 RUN adduser -D -g '' appuser
 

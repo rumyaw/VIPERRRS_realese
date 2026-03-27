@@ -3,6 +3,7 @@ package handlers
 import (
 	"encoding/json"
 	"net/http"
+	"time"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/google/uuid"
@@ -331,6 +332,8 @@ type createOpportunityBody struct {
 	SalaryMax        *int           `json:"salaryMax,omitempty"`
 	Currency         string         `json:"currency,omitempty"`
 	ValidUntil       *string        `json:"validUntil,omitempty"`
+	EventStart       *string        `json:"eventStart,omitempty"`
+	EventEnd         *string        `json:"eventEnd,omitempty"`
 }
 
 func (h *Cabinet) EmployerCreateOpportunity(w http.ResponseWriter, r *http.Request) {
@@ -354,6 +357,39 @@ func (h *Cabinet) EmployerCreateOpportunity(w http.ResponseWriter, r *http.Reque
 		respond.Error(w, http.StatusBadRequest, "invalid json")
 		return
 	}
+	parseDate := func(s *string) (*time.Time, error) {
+		if s == nil || *s == "" {
+			return nil, nil
+		}
+		t, err := time.Parse("2006-01-02", *s)
+		if err != nil {
+			return nil, err
+		}
+		return &t, nil
+	}
+	var validUntil *time.Time
+	var eventAt *time.Time
+	if body.Type == "event" {
+		es, err := parseDate(body.EventStart)
+		if err != nil {
+			respond.Error(w, http.StatusBadRequest, "invalid eventStart")
+			return
+		}
+		ee, err := parseDate(body.EventEnd)
+		if err != nil {
+			respond.Error(w, http.StatusBadRequest, "invalid eventEnd")
+			return
+		}
+		eventAt = es
+		validUntil = ee
+	} else {
+		v, err := parseDate(body.ValidUntil)
+		if err != nil {
+			respond.Error(w, http.StatusBadRequest, "invalid validUntil")
+			return
+		}
+		validUntil = v
+	}
 	opp, err := h.Opps.CreateByEmployer(
 		r.Context(),
 		userID,
@@ -374,12 +410,43 @@ func (h *Cabinet) EmployerCreateOpportunity(w http.ResponseWriter, r *http.Reque
 		body.SalaryMin,
 		body.SalaryMax,
 		body.Currency,
+		validUntil,
+		eventAt,
 	)
 	if err != nil {
 		respond.Error(w, http.StatusBadRequest, "failed to create opportunity")
 		return
 	}
 	respond.JSON(w, http.StatusCreated, opportunityDTO(opp))
+}
+
+func (h *Cabinet) EmployerGetOpportunity(w http.ResponseWriter, r *http.Request) {
+	uid, ok := r.Context().Value(middleware.UserIDKey).(string)
+	if !ok || uid == "" {
+		respond.Error(w, http.StatusUnauthorized, "unauthorized")
+		return
+	}
+	userID, err := uuid.Parse(uid)
+	if err != nil {
+		respond.Error(w, http.StatusBadRequest, "invalid user id")
+		return
+	}
+	idStr := chi.URLParam(r, "opportunityId")
+	oppID, err := uuid.Parse(idStr)
+	if err != nil {
+		respond.Error(w, http.StatusBadRequest, "invalid id")
+		return
+	}
+	o, err := h.Opps.GetByIDForAuthor(r.Context(), oppID, userID)
+	if err != nil {
+		respond.Error(w, http.StatusInternalServerError, "failed to load opportunity")
+		return
+	}
+	if o == nil {
+		respond.Error(w, http.StatusNotFound, "not found")
+		return
+	}
+	respond.JSON(w, http.StatusOK, opportunityDTO(o))
 }
 
 func (h *Cabinet) EmployerApplications(w http.ResponseWriter, r *http.Request) {
@@ -533,6 +600,25 @@ func (h *Cabinet) CuratorPendingOpportunities(w http.ResponseWriter, r *http.Req
 		return
 	}
 	respond.JSON(w, http.StatusOK, map[string]any{"items": items})
+}
+
+func (h *Cabinet) CuratorGetOpportunity(w http.ResponseWriter, r *http.Request) {
+	idStr := chi.URLParam(r, "opportunityId")
+	oppID, err := uuid.Parse(idStr)
+	if err != nil {
+		respond.Error(w, http.StatusBadRequest, "invalid id")
+		return
+	}
+	o, err := h.Opps.GetByIDUnrestricted(r.Context(), oppID)
+	if err != nil {
+		respond.Error(w, http.StatusInternalServerError, "failed to load opportunity")
+		return
+	}
+	if o == nil {
+		respond.Error(w, http.StatusNotFound, "not found")
+		return
+	}
+	respond.JSON(w, http.StatusOK, opportunityDTO(o))
 }
 
 type moderationBody struct {

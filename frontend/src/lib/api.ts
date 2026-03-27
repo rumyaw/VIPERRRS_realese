@@ -30,6 +30,8 @@ type OpportunityApi = {
   level?: Opportunity["level"];
   employment?: Opportunity["employment"];
   mediaUrl?: string;
+  viewCount?: number;
+  moderationStatus?: string;
 };
 
 function toOpportunity(item: OpportunityApi): Opportunity {
@@ -55,7 +57,24 @@ function toOpportunity(item: OpportunityApi): Opportunity {
     level: item.level ?? "junior",
     employment: item.employment ?? "full",
     mediaUrl: item.mediaUrl,
+    viewCount: item.viewCount,
+    moderationStatus: item.moderationStatus,
   };
+}
+
+export async function fetchCuratorOpportunityById(id: string, signal?: AbortSignal): Promise<Opportunity | null> {
+  const res = await fetch(`${API_BASE}/curator/opportunities/${encodeURIComponent(id)}`, {
+    method: "GET",
+    credentials: "include",
+    headers: { Accept: "application/json" },
+    signal,
+  });
+  if (res.status === 404) return null;
+  if (!res.ok) {
+    const data = (await res.json().catch(() => ({}))) as { error?: string };
+    throw new Error(data.error ?? `Request failed: ${res.status}`);
+  }
+  return toOpportunity((await res.json()) as OpportunityApi);
 }
 
 export async function fetchOpportunities(signal?: AbortSignal): Promise<Opportunity[]> {
@@ -160,6 +179,21 @@ export async function fetchEmployerOpportunities(): Promise<Opportunity[]> {
   return (data.items ?? []).map(toOpportunity);
 }
 
+export async function fetchEmployerOpportunityById(id: string, signal?: AbortSignal): Promise<Opportunity | null> {
+  const res = await fetch(`${API_BASE}/employer/opportunities/${encodeURIComponent(id)}`, {
+    method: "GET",
+    credentials: "include",
+    headers: { Accept: "application/json" },
+    signal,
+  });
+  if (res.status === 404) return null;
+  if (!res.ok) {
+    const data = (await res.json().catch(() => ({}))) as { error?: string };
+    throw new Error(data.error ?? `Request failed: ${res.status}`);
+  }
+  return toOpportunity((await res.json()) as OpportunityApi);
+}
+
 export async function createEmployerOpportunity(input: {
   title: string;
   shortDescription: string;
@@ -179,6 +213,8 @@ export async function createEmployerOpportunity(input: {
   salaryMax?: number;
   currency?: string;
   validUntil?: string;
+  eventStart?: string;
+  eventEnd?: string;
 }): Promise<Opportunity> {
   const data = await apiFetch<OpportunityApi>("/employer/opportunities", {
     method: "POST",

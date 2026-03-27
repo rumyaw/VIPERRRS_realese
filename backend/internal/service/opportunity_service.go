@@ -3,9 +3,10 @@ package service
 import (
 	"context"
 
-	"github.com/google/uuid"
 	"tramplin/internal/domain"
 	"tramplin/internal/repository"
+
+	"github.com/google/uuid"
 )
 
 type OpportunityService struct {
@@ -26,4 +27,12 @@ func (s *OpportunityService) GetByID(ctx context.Context, id string) (*domain.Op
 		return nil, err
 	}
 	return s.repo.GetByID(ctx, uid)
+}
+
+func (s *OpportunityService) RecordOpportunityView(ctx context.Context, id string) {
+	uid, err := uuid.Parse(id)
+	if err != nil {
+		return
+	}
+	_ = s.repo.IncrementViewCount(ctx, uid)
 }

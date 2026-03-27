@@ -718,6 +718,17 @@ func (r *UserRepository) CreateRecommendationChecked(ctx context.Context, fromUs
 		return fmt.Errorf("пользователь запретил рекомендации")
 	}
 
+	var dup bool
+	if err := r.pool.QueryRow(ctx,
+		`SELECT EXISTS(SELECT 1 FROM recommendations WHERE from_user_id = $1 AND to_user_id = $2 AND opportunity_id = $3)`,
+		fromUserID, toUserID, opportunityID,
+	).Scan(&dup); err != nil {
+		return err
+	}
+	if dup {
+		return fmt.Errorf("эта вакансия уже рекомендована этому контакту")
+	}
+
 	const q = `
 INSERT INTO recommendations (from_user_id, to_user_id, opportunity_id, message)
 VALUES ($1, $2, $3, $4)`

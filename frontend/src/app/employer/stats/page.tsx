@@ -25,7 +25,7 @@ import {
   type EmployerApplication,
 } from "@/lib/api";
 import type { Opportunity } from "@/lib/types";
-import { BarChart3, FileText, Users, TrendingUp } from "lucide-react";
+import { BarChart3, FileText, Users, TrendingUp, Eye } from "lucide-react";
 
 ChartJS.register(
   ArcElement,
@@ -57,17 +57,18 @@ function StatCard({
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ delay }}
+      className="h-full"
     >
-      <GlassPanel className="flex items-center gap-4 p-5">
+      <GlassPanel className="flex h-full min-h-[112px] items-center gap-4 p-5">
         <div
           className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl"
           style={{ background: accent }}
         >
           {icon}
         </div>
-        <div>
-          <p className="text-2xl font-bold text-[var(--text-primary)]">{value}</p>
-          <p className="text-xs text-[var(--text-secondary)]">{label}</p>
+        <div className="min-w-0 flex-1">
+          <p className="text-2xl font-bold leading-tight text-[var(--text-primary)]">{value}</p>
+          <p className="mt-1 text-xs leading-snug text-[var(--text-secondary)]">{label}</p>
         </div>
       </GlassPanel>
     </motion.div>
@@ -139,6 +140,11 @@ export default function EmployerStatsPage() {
 
   const timeline = useMemo(() => buildTimelineData(applications), [applications]);
 
+  const totalViews = useMemo(
+    () => opportunities.reduce((s, o) => s + (o.viewCount ?? 0), 0),
+    [opportunities],
+  );
+
   const doughnutData = {
     labels: ["На рассмотрении", "Приняты", "Отклонены", "В резерве"],
     datasets: [
@@ -164,10 +170,16 @@ export default function EmployerStatsPage() {
   const doughnutOptions = {
     responsive: true,
     maintainAspectRatio: false,
+    layout: { padding: { bottom: 8 } },
     plugins: {
       legend: {
         position: "bottom" as const,
-        labels: { color: "#64748b", padding: 16 },
+        labels: {
+          boxWidth: 12,
+          padding: 12,
+          font: { size: 11 },
+          color: "#64748b",
+        },
       },
     },
   };
@@ -191,20 +203,21 @@ export default function EmployerStatsPage() {
   const lineOptions = {
     responsive: true,
     maintainAspectRatio: false,
+    layout: { padding: { left: 4, right: 8 } },
     plugins: {
       legend: {
         position: "top" as const,
-        labels: { color: "#64748b" },
+        labels: { color: "#64748b", font: { size: 11 } },
       },
     },
     scales: {
       x: {
-        ticks: { color: "#64748b" },
-        grid: { color: "rgba(100, 116, 139, 0.15)" },
+        ticks: { color: "#475569", maxRotation: 45, minRotation: 0, autoSkip: true, maxTicksLimit: 8 },
+        grid: { color: "rgba(100, 116, 139, 0.12)" },
       },
       y: {
-        ticks: { color: "#64748b", stepSize: 1 },
-        grid: { color: "rgba(100, 116, 139, 0.15)" },
+        ticks: { color: "#475569", stepSize: 1 },
+        grid: { color: "rgba(100, 116, 139, 0.12)" },
         beginAtZero: true,
       },
     },
@@ -221,7 +234,7 @@ export default function EmployerStatsPage() {
   }
 
   return (
-    <div className="mx-auto max-w-5xl space-y-6">
+    <div className="mx-auto max-w-5xl space-y-6 px-0.5 min-[400px]:px-0">
       <div className="flex flex-wrap items-center justify-between gap-4">
         <div>
           <h1 className="text-2xl font-bold text-[var(--text-primary)]">Статистика</h1>
@@ -237,7 +250,7 @@ export default function EmployerStatsPage() {
         </Link>
       </div>
 
-      <div className="grid auto-rows-fr gap-4 sm:grid-cols-2 lg:grid-cols-4">
+      <div className="grid auto-rows-fr grid-cols-1 gap-3 min-[480px]:grid-cols-2 min-[900px]:grid-cols-3 xl:grid-cols-5">
         <StatCard
           label="Опубликовано карточек"
           value={opportunities.length}
@@ -266,23 +279,31 @@ export default function EmployerStatsPage() {
           accent="rgba(139, 92, 246, 0.25)"
           delay={0.15}
         />
+        <StatCard
+          label="Просмотры карточек (всего)"
+          value={totalViews}
+          icon={<Eye className="h-6 w-6 text-white" />}
+          accent="rgba(249, 115, 22, 0.28)"
+          delay={0.18}
+        />
       </div>
 
-      <div className="grid gap-6 lg:grid-cols-2">
+      <div className="grid grid-cols-1 gap-4 min-[800px]:grid-cols-2 min-[800px]:gap-6">
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.2 }}
+          className="min-w-0"
         >
-          <GlassPanel className="p-5">
-            <h2 className="mb-4 text-lg font-semibold text-[var(--text-primary)]">
+          <GlassPanel className="p-4 min-[400px]:p-5">
+            <h2 className="mb-3 text-base font-semibold text-[var(--text-primary)] min-[400px]:text-lg">
               Отклики по статусу
             </h2>
-            <div className="relative h-[280px]">
+            <div className="relative mx-auto h-[240px] w-full max-w-full min-[400px]:h-[280px]">
               {applications.length > 0 ? (
                 <Doughnut data={doughnutData} options={doughnutOptions} />
               ) : (
-                <div className="flex h-full items-center justify-center text-[var(--text-secondary)]">
+                <div className="flex h-full items-center justify-center text-sm text-[var(--text-secondary)]">
                   Нет данных для отображения
                 </div>
               )}
@@ -294,12 +315,13 @@ export default function EmployerStatsPage() {
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.25 }}
+          className="min-w-0"
         >
-          <GlassPanel className="p-5">
-            <h2 className="mb-4 text-lg font-semibold text-[var(--text-primary)]">
+          <GlassPanel className="p-4 min-[400px]:p-5">
+            <h2 className="mb-3 text-base font-semibold text-[var(--text-primary)] min-[400px]:text-lg">
               Отклики за 30 дней
             </h2>
-            <div className="relative h-[280px]">
+            <div className="relative mx-auto h-[240px] w-full max-w-full min-[400px]:h-[280px]">
               <Line data={lineData} options={lineOptions} />
             </div>
           </GlassPanel>

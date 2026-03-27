@@ -1,6 +1,8 @@
+# Имена хостов — сервисы Docker Compose (не container_name)
 apiVersion: 1
 datasources:
   - name: PostgreSQL
+    uid: tramplin-pg
     type: postgres
     url: postgres:5432
     database: tramplin
@@ -12,4 +14,12 @@ datasources:
     secureJsonData:
       password: tramplin
     isDefault: true
+    editable: true
+
+  - name: Prometheus
+    uid: tramplin-prom
+    type: prometheus
+    access: proxy
+    url: http://prometheus:9090
+    isDefault: false
     editable: true

@@ -7,7 +7,7 @@
   "links": [],
   "panels": [
     {
-      "datasource": { "type": "postgres", "uid": "" },
+      "datasource": { "type": "postgres", "uid": "tramplin-pg" },
       "fieldConfig": {
         "defaults": { "color": { "mode": "palette-classic" }, "thresholds": { "mode": "absolute", "steps": [{ "color": "green", "value": null }] } },
         "overrides": []
@@ -20,7 +20,7 @@
       "targets": [{ "rawSql": "SELECT COUNT(*) AS value FROM users;", "format": "table", "refId": "A" }]
     },
     {
-      "datasource": { "type": "postgres", "uid": "" },
+      "datasource": { "type": "postgres", "uid": "tramplin-pg" },
       "fieldConfig": { "defaults": { "thresholds": { "mode": "absolute", "steps": [{ "color": "green", "value": null }] } }, "overrides": [] },
       "gridPos": { "h": 4, "w": 6, "x": 6, "y": 0 },
       "id": 2,
@@ -30,7 +30,7 @@
       "targets": [{ "rawSql": "SELECT COUNT(*) AS value FROM opportunities;", "format": "table", "refId": "A" }]
     },
     {
-      "datasource": { "type": "postgres", "uid": "" },
+      "datasource": { "type": "postgres", "uid": "tramplin-pg" },
       "fieldConfig": { "defaults": { "thresholds": { "mode": "absolute", "steps": [{ "color": "green", "value": null }] } }, "overrides": [] },
       "gridPos": { "h": 4, "w": 6, "x": 12, "y": 0 },
       "id": 3,
@@ -40,7 +40,7 @@
       "targets": [{ "rawSql": "SELECT COUNT(*) AS value FROM applications;", "format": "table", "refId": "A" }]
     },
     {
-      "datasource": { "type": "postgres", "uid": "" },
+      "datasource": { "type": "postgres", "uid": "tramplin-pg" },
       "fieldConfig": { "defaults": { "thresholds": { "mode": "absolute", "steps": [{ "color": "orange", "value": null }] } }, "overrides": [] },
       "gridPos": { "h": 4, "w": 6, "x": 18, "y": 0 },
       "id": 4,
@@ -50,7 +50,7 @@
       "targets": [{ "rawSql": "SELECT COUNT(*) AS value FROM opportunities WHERE moderation_status='pending';", "format": "table", "refId": "A" }]
     },
     {
-      "datasource": { "type": "postgres", "uid": "" },
+      "datasource": { "type": "postgres", "uid": "tramplin-pg" },
       "fieldConfig": { "defaults": { "color": { "mode": "palette-classic" } }, "overrides": [] },
       "gridPos": { "h": 8, "w": 12, "x": 0, "y": 4 },
       "id": 5,
@@ -60,7 +60,7 @@
       "targets": [{ "rawSql": "SELECT DATE(created_at) AS time, COUNT(*) AS registrations FROM users WHERE created_at >= NOW() - INTERVAL '30 days' GROUP BY DATE(created_at) ORDER BY 1;", "format": "time_series", "refId": "A" }]
     },
     {
-      "datasource": { "type": "postgres", "uid": "" },
+      "datasource": { "type": "postgres", "uid": "tramplin-pg" },
       "fieldConfig": { "defaults": { "color": { "mode": "palette-classic" } }, "overrides": [] },
       "gridPos": { "h": 8, "w": 12, "x": 12, "y": 4 },
       "id": 6,
@@ -70,7 +70,7 @@
       "targets": [{ "rawSql": "SELECT DATE(created_at) AS time, COUNT(*) AS applications FROM applications WHERE created_at >= NOW() - INTERVAL '30 days' GROUP BY DATE(created_at) ORDER BY 1;", "format": "time_series", "refId": "A" }]
     },
     {
-      "datasource": { "type": "postgres", "uid": "" },
+      "datasource": { "type": "postgres", "uid": "tramplin-pg" },
       "fieldConfig": { "defaults": { "color": { "mode": "palette-classic" } }, "overrides": [] },
       "gridPos": { "h": 8, "w": 24, "x": 0, "y": 12 },
       "id": 7,
@@ -78,6 +78,66 @@
       "title": "Пользователи по ролям",
       "type": "piechart",
       "targets": [{ "rawSql": "SELECT role::text AS metric, COUNT(*) AS value FROM users GROUP BY role;", "format": "table", "refId": "A" }]
+    },
+    {
+      "datasource": { "type": "postgres", "uid": "tramplin-pg" },
+      "fieldConfig": { "defaults": { "color": { "mode": "palette-classic" } }, "overrides": [] },
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 20 },
+      "id": 8,
+      "options": { "legend": { "displayMode": "list", "placement": "bottom" }, "pieType": "donut", "tooltip": { "mode": "single" }, "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": true } },
+      "title": "Карточки по модерации",
+      "type": "piechart",
+      "targets": [{ "rawSql": "SELECT moderation_status AS metric, COUNT(*)::bigint AS value FROM opportunities GROUP BY moderation_status;", "format": "table", "refId": "A" }]
+    },
+    {
+      "datasource": { "type": "postgres", "uid": "tramplin-pg" },
+      "fieldConfig": { "defaults": { "color": { "mode": "palette-classic" } }, "overrides": [] },
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 20 },
+      "id": 9,
+      "options": { "legend": { "displayMode": "list", "placement": "bottom" }, "tooltip": { "mode": "single" } },
+      "title": "Типы карточек (все)",
+      "type": "piechart",
+      "targets": [{ "rawSql": "SELECT type::text AS metric, COUNT(*)::bigint AS value FROM opportunities GROUP BY type;", "format": "table", "refId": "A" }]
+    },
+    {
+      "datasource": { "type": "postgres", "uid": "tramplin-pg" },
+      "fieldConfig": { "defaults": { "thresholds": { "mode": "absolute", "steps": [{ "color": "blue", "value": null }] } }, "overrides": [] },
+      "gridPos": { "h": 4, "w": 6, "x": 0, "y": 28 },
+      "id": 10,
+      "options": { "colorMode": "value", "graphMode": "area", "justifyMode": "auto", "textMode": "auto", "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false } },
+      "title": "В избранном (связей)",
+      "type": "stat",
+      "targets": [{ "rawSql": "SELECT COUNT(*)::bigint AS value FROM favorites;", "format": "table", "refId": "A" }]
+    },
+    {
+      "datasource": { "type": "postgres", "uid": "tramplin-pg" },
+      "fieldConfig": { "defaults": { "thresholds": { "mode": "absolute", "steps": [{ "color": "purple", "value": null }] } }, "overrides": [] },
+      "gridPos": { "h": 4, "w": 6, "x": 6, "y": 28 },
+      "id": 11,
+      "options": { "colorMode": "value", "graphMode": "area", "justifyMode": "auto", "textMode": "auto", "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false } },
+      "title": "Заявок в контакты",
+      "type": "stat",
+      "targets": [{ "rawSql": "SELECT COUNT(*)::bigint AS value FROM contact_requests;", "format": "table", "refId": "A" }]
+    },
+    {
+      "datasource": { "type": "postgres", "uid": "tramplin-pg" },
+      "fieldConfig": { "defaults": { "thresholds": { "mode": "absolute", "steps": [{ "color": "green", "value": null }] } }, "overrides": [] },
+      "gridPos": { "h": 4, "w": 6, "x": 12, "y": 28 },
+      "id": 12,
+      "options": { "colorMode": "value", "graphMode": "area", "justifyMode": "auto", "textMode": "auto", "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false } },
+      "title": "Рекомендаций вакансий",
+      "type": "stat",
+      "targets": [{ "rawSql": "SELECT COUNT(*)::bigint AS value FROM recommendations;", "format": "table", "refId": "A" }]
+    },
+    {
+      "datasource": { "type": "postgres", "uid": "tramplin-pg" },
+      "fieldConfig": { "defaults": { "thresholds": { "mode": "absolute", "steps": [{ "color": "orange", "value": null }] } }, "overrides": [] },
+      "gridPos": { "h": 4, "w": 6, "x": 18, "y": 28 },
+      "id": 13,
+      "options": { "colorMode": "value", "graphMode": "area", "justifyMode": "auto", "textMode": "auto", "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false } },
+      "title": "Просмотров страниц карточек (всего)",
+      "type": "stat",
+      "targets": [{ "rawSql": "SELECT COALESCE(SUM(view_count), 0)::bigint AS value FROM opportunities;", "format": "table", "refId": "A" }]
     }
   ],
   "schemaVersion": 39,

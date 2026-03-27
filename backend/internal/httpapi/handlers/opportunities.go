@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"context"
 	"net/http"
 	"strconv"
 	"time"
@@ -42,6 +43,7 @@ func (h *Opportunities) Get(w http.ResponseWriter, r *http.Request) {
 		respond.Error(w, http.StatusNotFound, "not found")
 		return
 	}
+	go h.Svc.RecordOpportunityView(context.Background(), id)
 	respond.JSON(w, http.StatusOK, opportunityDTO(o))
 }
 
@@ -82,6 +84,10 @@ func opportunityDTO(o *domain.Opportunity) map[string]any {
 	}
 	if o.EventAt != nil {
 		m["eventDate"] = o.EventAt.Format(time.RFC3339)
+	}
+	m["viewCount"] = o.ViewCount
+	if o.ModerationStatus != "" {
+		m["moderationStatus"] = o.ModerationStatus
 	}
 	return m
 }

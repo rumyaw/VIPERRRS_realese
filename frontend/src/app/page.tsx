@@ -13,7 +13,6 @@ import type { Opportunity, WorkFormat } from "@/lib/types";
 import { cn } from "@/lib/cn";
 import { fetchOpportunities, fetchServerFavorites, addServerFavorite, removeServerFavorite } from "@/lib/api";
 import { useToast } from "@/hooks/useToast";
-import { ShareMenu } from "@/components/opportunities/ShareMenu";
 
 const YandexMap = dynamic(
   () => import("@/components/map/YandexMap").then((m) => m.YandexMap),
@@ -156,8 +155,8 @@ export default function HomePage() {
       </section>
 
       <GlassPanel className="p-4 sm:p-6">
-        <div className="flex flex-col gap-4 lg:flex-row lg:items-end">
-          <div className="flex-1 space-y-2">
+        <div className="flex flex-col gap-5">
+          <div className="space-y-2">
             <label className="text-xs font-medium text-[var(--text-secondary)]">Поиск</label>
             <input
               className="glass-input w-full px-4 py-3 text-sm outline-none ring-[var(--brand-orange)] focus:ring-2"
@@ -166,8 +165,9 @@ export default function HomePage() {
               onChange={(e) => setQ(e.target.value)}
             />
           </div>
-          <div className="grid flex-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
-            <div className="space-y-2">
+
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
+            <div className="min-w-0 space-y-2">
               <label className="text-xs font-medium text-[var(--text-secondary)]">Тег / стек</label>
               <select
                 className="glass-select w-full px-4 py-3 text-sm outline-none"
@@ -182,7 +182,7 @@ export default function HomePage() {
                 ))}
               </select>
             </div>
-            <div className="space-y-2">
+            <div className="min-w-0 space-y-2">
               <label className="text-xs font-medium text-[var(--text-secondary)]">Формат</label>
               <select
                 className="glass-select w-full px-4 py-3 text-sm outline-none"
@@ -195,7 +195,7 @@ export default function HomePage() {
                 <option value="remote">Удалённо</option>
               </select>
             </div>
-            <div className="space-y-2">
+            <div className="min-w-0 space-y-2">
               <label className="text-xs font-medium text-[var(--text-secondary)]">Город</label>
               <select
                 className="glass-select w-full px-4 py-3 text-sm outline-none"
@@ -210,7 +210,7 @@ export default function HomePage() {
                 ))}
               </select>
             </div>
-            <div className="space-y-2">
+            <div className="min-w-0 space-y-2">
               <label className="text-xs font-medium text-[var(--text-secondary)]">Тип</label>
               <select
                 className="glass-select w-full px-4 py-3 text-sm outline-none"
@@ -226,38 +226,41 @@ export default function HomePage() {
               </select>
             </div>
           </div>
-          <div className="flex gap-2 rounded-2xl border border-[var(--glass-border)] p-1">
-            <button
-              type="button"
-              onClick={() => setView("map")}
-              className={cn(
-                "flex-1 rounded-xl px-4 py-2.5 text-sm font-medium transition",
-                view === "map"
-                  ? "bg-[var(--glass-bg-strong)] text-[var(--text-primary)]"
-                  : "text-[var(--text-secondary)]",
-              )}
-            >
-              Карта
-            </button>
-            <button
-              type="button"
-              onClick={() => setView("list")}
-              className={cn(
-                "flex-1 rounded-xl px-4 py-2.5 text-sm font-medium transition",
-                view === "list"
-                  ? "bg-[var(--glass-bg-strong)] text-[var(--text-primary)]"
-                  : "text-[var(--text-secondary)]",
-              )}
-            >
-              Лента
-            </button>
+
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <p className="order-2 text-xs text-[var(--text-secondary)] sm:order-1">
+              Найдено: {filtered.length} из {opportunities.length}
+              {!apiLoaded && " · загрузка..."}
+              {apiError && " · не удалось загрузить возможности"}
+            </p>
+            <div className="order-1 flex w-full shrink-0 gap-1 rounded-2xl border border-[var(--glass-border)] p-1 sm:order-2 sm:w-auto sm:min-w-[220px]">
+              <button
+                type="button"
+                onClick={() => setView("map")}
+                className={cn(
+                  "min-h-[44px] flex-1 rounded-xl px-3 py-2.5 text-sm font-medium transition sm:px-4",
+                  view === "map"
+                    ? "bg-[var(--glass-bg-strong)] text-[var(--text-primary)]"
+                    : "text-[var(--text-secondary)]",
+                )}
+              >
+                Карта
+              </button>
+              <button
+                type="button"
+                onClick={() => setView("list")}
+                className={cn(
+                  "min-h-[44px] flex-1 rounded-xl px-3 py-2.5 text-sm font-medium transition sm:px-4",
+                  view === "list"
+                    ? "bg-[var(--glass-bg-strong)] text-[var(--text-primary)]"
+                    : "text-[var(--text-secondary)]",
+                )}
+              >
+                Лента
+              </button>
+            </div>
           </div>
         </div>
-        <p className="mt-4 text-xs text-[var(--text-secondary)]">
-          Найдено: {filtered.length} из {opportunities.length}
-          {!apiLoaded && " · загрузка..."}
-          {apiError && " · не удалось загрузить возможности"}
-        </p>
       </GlassPanel>
 
       {view === "map" ? (
@@ -270,6 +273,7 @@ export default function HomePage() {
             opportunities={filtered}
             favoriteIds={favoriteIds}
             onMarkerClick={(id) => setPopupId(id)}
+            className="h-[min(48dvh,420px)] w-full rounded-xl sm:h-[min(58dvh,520px)] md:h-[min(62vh,560px)]"
           />
         </motion.div>
       ) : (
@@ -288,7 +292,7 @@ export default function HomePage() {
                 </span>
               </button>
               {showFavorites && (
-                <div className="grid gap-5 md:grid-cols-2">
+                <div className="grid grid-cols-1 gap-4 min-[700px]:grid-cols-2 min-[700px]:gap-5">
                   {favoriteOpps.map((opp: Opportunity) => (
                     <div key={opp.id} className="h-full">
                       <OpportunityCard
@@ -305,7 +309,7 @@ export default function HomePage() {
           )}
 
           {/* Общий список */}
-          <div className="grid gap-5 md:grid-cols-2">
+          <div className="grid grid-cols-1 gap-4 min-[700px]:grid-cols-2 min-[700px]:gap-5">
             {filtered.map((opp: Opportunity) => (
               <div key={opp.id} className="h-full">
                 <OpportunityCard
@@ -324,7 +328,7 @@ export default function HomePage() {
         <motion.div
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
-          className="fixed inset-0 z-[100] flex items-end justify-center bg-black/50 p-4 sm:items-center"
+          className="fixed inset-0 z-[100] flex items-end justify-center bg-black/50 p-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] pt-10 min-[500px]:items-center min-[500px]:p-4"
           role="dialog"
           aria-modal
           onClick={() => setPopupId(null)}
@@ -333,14 +337,14 @@ export default function HomePage() {
             initial={{ y: 32, opacity: 0 }}
             animate={{ y: 0, opacity: 1 }}
             onClick={(e) => e.stopPropagation()}
-            className="w-full max-w-lg overflow-hidden rounded-2xl border border-[var(--glass-border)] bg-[color-mix(in_srgb,var(--page-bg)_92%,transparent)] p-4 shadow-2xl backdrop-blur-2xl sm:p-6"
+            className="max-h-[min(88dvh,36rem)] w-full max-w-lg overflow-y-auto overflow-x-hidden rounded-2xl border border-[var(--glass-border)] bg-[color-mix(in_srgb,var(--page-bg)_92%,transparent)] p-3 shadow-2xl backdrop-blur-2xl min-[500px]:max-h-[90vh] min-[500px]:p-5"
           >
-            <div className="mb-4 flex items-center justify-between gap-3">
-              <p className="text-sm font-semibold text-[var(--text-primary)]">Карточка вакансии</p>
+            <div className="mb-3 flex flex-wrap items-center justify-between gap-2 sm:mb-4">
+              <p className="text-sm font-semibold text-[var(--text-primary)]">Карточка возможности</p>
               <button
                 type="button"
                 onClick={() => setPopupId(null)}
-                className="rounded-lg border border-[var(--glass-border)] bg-[var(--glass-bg)] px-3 py-1 text-sm text-[var(--text-secondary)] transition hover:bg-[var(--glass-bg-strong)]"
+                className="min-h-[40px] rounded-xl border border-[var(--glass-border)] bg-[var(--glass-bg)] px-4 py-2 text-sm font-medium text-[var(--text-primary)] transition hover:bg-[var(--glass-bg-strong)]"
               >
                 Закрыть
               </button>

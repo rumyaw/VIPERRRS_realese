@@ -162,17 +162,28 @@ export function YandexMap({
 
         opportunities.forEach((opp) => {
           const fav = favoriteIds.includes(opp.id);
-          const salary =
-            opp.salaryMin != null && opp.salaryMax != null
-              ? `${opp.salaryMin.toLocaleString("ru-RU")}–${opp.salaryMax.toLocaleString("ru-RU")} ${opp.currency}`
-              : "ЗП по договорённости";
+          const isEvent = opp.type === "event";
+          let salaryHtml = "";
+          if (opp.salaryMin != null && opp.salaryMax != null) {
+            salaryHtml = `${opp.salaryMin.toLocaleString("ru-RU")}–${opp.salaryMax.toLocaleString("ru-RU")} ${opp.currency}`;
+          } else if (!isEvent) {
+            salaryHtml = "Зарплата не указана";
+          }
+          const headerBg = isDark ? "#1a1a2e" : "#f5f0e8";
+          const headerColor = isDark ? "#ffffff" : "#111827";
+          const headerBorder = isDark ? "#3d3d5c" : "#e7dfd0";
+          const bodyBg = isDark ? "#1a1a2e" : "#fffdf9";
+          const bodyText = isDark ? "#e0e0ff" : "#334155";
+          const companyColor = isDark ? "#ff6b6b" : "#b45309";
+          const salaryColor = isDark ? "#ffd93d" : "#0f766e";
+          const tagsColor = isDark ? "#a0a0cc" : "#64748b";
 
           const placemark = new ymaps.Placemark(
             opp.coords,
             {
-              balloonContentHeader: `<div style="font-weight:600;font-size:15px;padding:12px 16px;background:#1a1a2e;color:#fff;border-bottom:1px solid #3d3d5c;">${opp.title}</div>`,
-              balloonContentBody: `<div style="padding:16px;background:#1a1a2e;color:#e0e0ff;"><div style="font-weight:500;margin-bottom:8px;color:#ff6b6b;">${opp.companyName}</div><div style="margin-top:12px;font-size:14px;color:#ffd93d;font-weight:500;">${salary}</div><div style="margin-top:12px;font-size:12px;color:#a0a0cc;">${opp.tags.slice(0, 4).join(" · ")}</div></div>`,
-              hintContent: `<span style="color:#fff;background:#2d2d44;padding:4px 8px;border-radius:4px;">${opp.title} · ${opp.companyName}</span>`,
+              balloonContentHeader: `<div style="font-weight:600;font-size:15px;padding:12px 16px;background:${headerBg};color:${headerColor};border-bottom:1px solid ${headerBorder};">${opp.title}</div>`,
+              balloonContentBody: `<div style="padding:14px 16px;background:${bodyBg};color:${bodyText};"><div style="font-weight:500;margin-bottom:8px;color:${companyColor};">${opp.companyName}</div>${salaryHtml ? `<div style="margin-top:10px;min-height:40px;display:flex;align-items:center;font-size:14px;color:${salaryColor};font-weight:600;">${salaryHtml}</div>` : `<div style="margin-top:10px;min-height:40px;"></div>`}<div style="margin-top:10px;font-size:12px;color:${tagsColor};">${opp.tags.slice(0, 4).join(" · ")}</div></div>`,
+              hintContent: `<span style="color:${isDark ? "#fff" : "#111"};background:${isDark ? "#2d2d44" : "#e8e4dc"};padding:4px 8px;border-radius:4px;">${opp.title} · ${opp.companyName}</span>`,
             },
             {
               // Используем кастомные цвета вместо стандартных пресетов
@@ -220,7 +231,7 @@ export function YandexMap({
       }
       if (el) el.innerHTML = "";
     };
-  }, [opportunities, favoriteIds, onMarkerClick, onMapClick, selectable]);
+  }, [opportunities, favoriteIds, onMarkerClick, onMapClick, selectable, isDark]);
 
   const apiKey = process.env.NEXT_PUBLIC_YANDEX_MAPS_API_KEY;
 

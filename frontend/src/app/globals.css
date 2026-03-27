@@ -131,6 +131,17 @@ body {
   box-shadow: 0 0 0 2px color-mix(in srgb, var(--brand-orange) 22%, transparent);
 }
 
+/* Числовые поля: без стрелок stepper (как обычное поле) */
+input.input-no-spinner::-webkit-outer-spin-button,
+input.input-no-spinner::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+input.input-no-spinner[type="number"] {
+  -moz-appearance: textfield;
+  appearance: textfield;
+}
+
 /*
  * Native <option> styling is limited cross-browser (Firefox supports background/color,
  * Chrome/Safari largely ignore it). For fully consistent styling, consider replacing
@@ -283,4 +294,24 @@ body {
 
 .map-marker-favorite .ymaps-2-1-79-placemark-content {
   filter: drop-shadow(0 0 8px var(--brand-orange));
+}
+
+/*
+ * Статусы откликов / модерации: в светлой теме фиксируем тёмный текст с !important,
+ * чтобы перебить наследование от body и гарантировать читаемость в Docker/production-сборке.
+ * В тёмной теме правило не применяется — остаются классы Tailwind (dark:…).
+ */
+:root:not(.dark) .status-badge-pill {
+  color: #141414 !important;
+  -webkit-text-fill-color: #141414;
+}
+
+:root:not(.dark) .status-badge-pill svg {
+  color: inherit !important;
+}
+
+/* Плашки «тип / формат» на карточках: в светлой теме не приглушать до secondary */
+:root:not(.dark) .card-meta-chip {
+  color: var(--text-primary) !important;
+  -webkit-text-fill-color: var(--text-primary);
 }

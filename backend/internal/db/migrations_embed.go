@@ -101,6 +101,7 @@ CREATE TABLE IF NOT EXISTS opportunities (
   employment employment_type NOT NULL DEFAULT 'full',
   media_url text,
   moderation_status text NOT NULL DEFAULT 'approved',
+  view_count bigint NOT NULL DEFAULT 0,
   created_at timestamptz NOT NULL DEFAULT now(),
   updated_at timestamptz NOT NULL DEFAULT now()
 );
@@ -1032,6 +1033,26 @@ CREATE TABLE IF NOT EXISTS favorites (
 );
 
 CREATE INDEX IF NOT EXISTS idx_favorites_user ON favorites (user_id);
+`,
+
+	"0007_opportunity_view_count.sql": `ALTER TABLE opportunities ADD COLUMN IF NOT EXISTS view_count bigint NOT NULL DEFAULT 0;
+`,
+
+	"0008_recommendations_unique_triple.sql": `DELETE FROM recommendations r
+WHERE r.id IN (
+  SELECT id FROM (
+    SELECT id,
+           ROW_NUMBER() OVER (
+             PARTITION BY from_user_id, to_user_id, opportunity_id
+             ORDER BY created_at ASC, id ASC
+           ) AS rn
+    FROM recommendations
+  ) x
+  WHERE rn > 1
+);
+
+CREATE UNIQUE INDEX IF NOT EXISTS idx_recommendations_from_to_opp
+ON recommendations (from_user_id, to_user_id, opportunity_id);
 `,
 }
 

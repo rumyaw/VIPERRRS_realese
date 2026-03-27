@@ -10,6 +10,8 @@ import { JOB_SEARCH_LABELS } from "@/lib/profile-defaults";
 import { fetchPublicProfile, sendContactRequest } from "@/lib/api";
 import type { PublicProfileApi } from "@/lib/types";
 import { useToast } from "@/hooks/useToast";
+import { applicationStatusBadge } from "@/lib/status-badges";
+import { cn } from "@/lib/cn";
 import { HugeiconsIcon } from "@hugeicons/react";
 import {
   UserAdd01Icon,
@@ -106,7 +108,7 @@ export default function PublicProfilePage() {
               </h1>
               <p className="mt-1 text-sm text-[var(--text-secondary)]">{profile.email}</p>
               <div className="mt-2 flex flex-wrap justify-center gap-2 sm:justify-start">
-                <span className="rounded-full bg-[var(--glass-bg-strong)] px-3 py-1 text-xs font-medium text-[var(--text-secondary)]">
+                <span className="card-meta-chip rounded-full bg-[var(--glass-bg-strong)] px-3 py-1 text-xs font-medium text-[var(--text-secondary)]">
                   {JOB_SEARCH_LABELS[profile.jobSearchStatus as keyof typeof JOB_SEARCH_LABELS] ?? profile.jobSearchStatus}
                 </span>
               </div>
@@ -116,12 +118,17 @@ export default function PublicProfilePage() {
             </div>
             <div className="flex gap-2">
               {profile.isContact ? (
-                <span className="flex items-center gap-1 rounded-xl bg-emerald-500/20 px-4 py-2 text-sm font-medium text-emerald-300">
+                <span
+                  className={cn(
+                    "flex items-center gap-1 rounded-xl px-4 py-2 text-sm font-medium",
+                    applicationStatusBadge.accepted,
+                  )}
+                >
                   <HugeiconsIcon icon={CheckmarkCircle01Icon} size={16} />
                   В контактах
                 </span>
               ) : requestSent ? (
-                <span className="rounded-xl bg-yellow-500/10 px-4 py-2 text-sm font-medium text-yellow-300">
+                <span className={cn("rounded-xl px-4 py-2 text-sm font-medium", applicationStatusBadge.pending)}>
                   Заявка отправлена
                 </span>
               ) : (
@@ -240,13 +247,16 @@ export default function PublicProfilePage() {
                       <p className="text-xs text-[var(--text-secondary)]">{a.companyName}</p>
                     </div>
                     <span
-                      className={`rounded-full px-2 py-0.5 text-xs ${
+                      className={cn(
+                        "rounded-full px-2 py-0.5 text-xs",
                         a.status === "accepted"
-                          ? "bg-emerald-500/20 text-emerald-300"
+                          ? applicationStatusBadge.accepted
                           : a.status === "rejected"
-                            ? "bg-red-500/20 text-red-300"
-                            : "bg-[var(--glass-bg-strong)] text-[var(--text-secondary)]"
-                      }`}
+                            ? applicationStatusBadge.rejected
+                            : a.status === "reserve"
+                              ? applicationStatusBadge.reserve
+                              : applicationStatusBadge.pending,
+                      )}
                     >
                       {statusLabels[a.status] ?? a.status}
                     </span>

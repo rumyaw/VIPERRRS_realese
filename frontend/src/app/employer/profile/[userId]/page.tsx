@@ -60,7 +60,7 @@ export default function EmployerPublicProfilePage() {
               <div className="flex items-center gap-3">
                 <h1 className="text-2xl font-bold text-[var(--text-primary)]">{profile.companyName}</h1>
                 {profile.verified && (
-                  <span className="rounded-full bg-emerald-500/20 px-3 py-1 text-xs font-medium text-emerald-300">
+                  <span className="status-badge-pill rounded-full border border-emerald-800/35 bg-emerald-200 px-3 py-1 text-xs font-medium !text-black dark:border-transparent dark:bg-emerald-500/20 dark:!text-emerald-200">
                     Верифицировано
                   </span>
                 )}

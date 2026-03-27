@@ -10,6 +10,7 @@ import { fetchApplicantApplications } from "@/lib/api";
 import { X } from "lucide-react";
 import { HugeiconsIcon } from "@hugeicons/react";
 import { Clock01Icon, CheckmarkCircle01Icon, Building01Icon, Location01Icon } from "@hugeicons/core-free-icons";
+import { applicationStatusBadge } from "@/lib/status-badges";
 
 export default function ApplicantApplicationsPage() {
   const { user } = useAuth();
@@ -49,10 +50,10 @@ export default function ApplicantApplicationsPage() {
   };
 
   const statusConfig: Record<string, { label: string; color: string; icon: React.ReactNode }> = {
-    pending: { label: "На рассмотрении", color: "bg-amber-500/15 text-amber-700 dark:text-amber-300", icon: <HugeiconsIcon icon={Clock01Icon} size={16} /> },
-    accepted: { label: "Приглашение", color: "bg-emerald-500/15 text-emerald-700 dark:text-emerald-300", icon: <HugeiconsIcon icon={CheckmarkCircle01Icon} size={16} /> },
-    rejected: { label: "Отказ", color: "bg-red-500/15 text-red-700 dark:text-red-300", icon: <X className="h-4 w-4" /> },
-    reserve: { label: "В резерве", color: "bg-blue-500/15 text-blue-700 dark:text-blue-300", icon: <HugeiconsIcon icon={Clock01Icon} size={16} /> },
+    pending: { label: "На рассмотрении", color: applicationStatusBadge.pending, icon: <HugeiconsIcon icon={Clock01Icon} size={16} /> },
+    accepted: { label: "Приглашение", color: applicationStatusBadge.accepted, icon: <HugeiconsIcon icon={CheckmarkCircle01Icon} size={16} /> },
+    rejected: { label: "Отказ", color: applicationStatusBadge.rejected, icon: <X className="h-4 w-4" /> },
+    reserve: { label: "В резерве", color: applicationStatusBadge.reserve, icon: <HugeiconsIcon icon={Clock01Icon} size={16} /> },
   };
 
   return (
@@ -124,7 +125,9 @@ export default function ApplicantApplicationsPage() {
                         Отклик отправлен: {new Date(app.createdAt).toLocaleDateString("ru-RU")}
                       </p>
                     </div>
-                    <div className={`flex items-center gap-2 rounded-full px-3 py-1.5 text-sm ${status.color}`}>
+                    <div
+                      className={`flex items-center gap-2 rounded-full px-3 py-1.5 text-sm [&_svg]:text-current ${status.color}`}
+                    >
                       {status.icon}
                       {status.label}
                     </div>

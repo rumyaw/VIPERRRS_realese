@@ -8,6 +8,8 @@ import { useAuth } from "@/contexts/auth-context";
 import { GlassPanel } from "@/components/ui/GlassPanel";
 import { fetchEmployerOpportunities } from "@/lib/api";
 import type { Opportunity } from "@/lib/types";
+import { cn } from "@/lib/cn";
+import { moderationStatusBadge } from "@/lib/status-badges";
 import { HugeiconsIcon } from "@hugeicons/react";
 import { PlusSignIcon, Location01Icon, Briefcase01Icon, Calendar01Icon } from "@hugeicons/core-free-icons";
 
@@ -50,8 +52,14 @@ export default function EmployerOpportunitiesPage() {
     remote: "Удалённо",
   };
 
+  const moderationLabel = (st: string | undefined) => {
+    if (st === "approved") return "Опубликовано";
+    if (st === "rejected") return "Отклонено";
+    return "На модерации";
+  };
+
   return (
-    <div className="mx-auto max-w-5xl space-y-6">
+    <div className="mx-auto max-w-5xl space-y-6 px-1 sm:px-0">
       <div className="flex flex-wrap items-center justify-between gap-4">
         <div>
           <h1 className="text-2xl font-bold text-[var(--text-primary)]">Мои карточки</h1>
@@ -104,9 +112,21 @@ export default function EmployerOpportunitiesPage() {
               <GlassPanel className="group relative overflow-hidden p-5 transition hover:border-[var(--brand-cyan)]">
                 <div className="flex items-start justify-between gap-3">
                   <div className="flex-1">
-                    <span className="inline-block rounded-full bg-[var(--glass-bg-strong)] px-2 py-1 text-xs text-[var(--text-secondary)]">
-                      {typeLabels[opp.type] || opp.type}
-                    </span>
+                    <div className="flex flex-wrap items-center gap-2">
+                      <span className="card-meta-chip inline-block rounded-full bg-[var(--glass-bg-strong)] px-2 py-1 text-xs text-[var(--text-secondary)]">
+                        {typeLabels[opp.type] || opp.type}
+                      </span>
+                      <span
+                        className={cn(
+                          "inline-flex rounded-full px-2 py-1 text-xs font-medium",
+                          moderationStatusBadge[
+                            (opp.moderationStatus ?? "pending") as keyof typeof moderationStatusBadge
+                          ] ?? moderationStatusBadge.pending,
+                        )}
+                      >
+                        {moderationLabel(opp.moderationStatus)}
+                      </span>
+                    </div>
                     <h3 className="mt-2 text-lg font-semibold text-[var(--text-primary)] group-hover:text-[var(--brand-cyan)] transition">
                       {opp.title}
                     </h3>
@@ -137,13 +157,23 @@ export default function EmployerOpportunitiesPage() {
                   )}
                 </div>
 
-                <div className="mt-4 flex gap-2">
+                <div className="mt-4 flex flex-wrap gap-2">
                   <Link
-                    href={`/opportunities/${opp.id}`}
+                    href={`/employer/opportunities/${opp.id}`}
                     className="rounded-lg bg-[var(--glass-bg-strong)] px-3 py-1.5 text-xs text-[var(--text-primary)] transition hover:bg-[var(--glass-bg)]"
                   >
                     Просмотр
                   </Link>
+                  {opp.moderationStatus === "approved" && (
+                    <Link
+                      href={`/opportunities/${opp.id}`}
+                      className="rounded-lg bg-[var(--glass-bg-strong)] px-3 py-1.5 text-xs text-[var(--text-primary)] transition hover:bg-[var(--glass-bg)]"
+                      target="_blank"
+                      rel="noreferrer"
+                    >
+                      На сайте ↗
+                    </Link>
+                  )}
                   <Link
                     href={`/employer/applications?opp=${opp.id}`}
                     className="rounded-lg bg-[var(--glass-bg-strong)] px-3 py-1.5 text-xs text-[var(--text-primary)] transition hover:bg-[var(--glass-bg)]"

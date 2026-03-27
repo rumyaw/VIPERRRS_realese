@@ -1,10 +1,12 @@
 "use client";
 
 import { motion, AnimatePresence } from "framer-motion";
-import { useEffect, useState, useRef } from "react";
+import { useEffect, useState, useRef, useCallback } from "react";
+import { createPortal } from "react-dom";
 import { fetchRecommendableContacts, sendRecommendation } from "@/lib/api";
 import type { RecommendableContactApi } from "@/lib/types";
 import { useToast } from "@/hooks/useToast";
+import { cn } from "@/lib/cn";
 import { HugeiconsIcon } from "@hugeicons/react";
 import { Share01Icon, UserGroupIcon } from "@hugeicons/core-free-icons";
 
@@ -32,25 +34,83 @@ function VKIcon() {
   );
 }
 
-export function ShareMenu({ opportunityId }: { opportunityId: string }) {
+type Anchor = { top: number; left: number; transform: string };
+
+const shareIconBtnClass =
+  "flex min-h-[52px] min-w-[4.5rem] flex-1 flex-col items-center justify-center gap-1 rounded-lg px-2 py-2 text-xs transition hover:bg-[var(--glass-bg-strong)] sm:min-h-0 sm:min-w-[4.75rem] sm:flex-none";
+
+export function ShareMenu({
+  opportunityId,
+  showContactsRecommendation = true,
+  shareButtonClassName,
+}: {
+  opportunityId: string;
+  showContactsRecommendation?: boolean;
+  /** Растянуть кнопку «Поделиться» (например w-full в сетке карточки) */
+  shareButtonClassName?: string;
+}) {
   const { showToast } = useToast();
   const [open, setOpen] = useState(false);
   const [contactsOpen, setContactsOpen] = useState(false);
   const [contacts, setContacts] = useState<RecommendableContactApi[]>([]);
   const [loadingContacts, setLoadingContacts] = useState(false);
   const [sending, setSending] = useState<string | null>(null);
-  const menuRef = useRef<HTMLDivElement>(null);
+  const [anchor, setAnchor] = useState<Anchor | null>(null);
+  const btnRef = useRef<HTMLButtonElement>(null);
+  const rootRef = useRef<HTMLDivElement>(null);
+
+  const computeAnchor = useCallback(() => {
+    const el = btnRef.current;
+    if (!el) return;
+    const r = el.getBoundingClientRect();
+    const margin = 8;
+    const vw = window.innerWidth;
+    const popW = Math.min(contactsOpen ? 300 : 300, vw - 2 * margin);
+    const idealLeft = r.left + r.width / 2 - popW / 2;
+    const left = Math.min(vw - popW - margin, Math.max(margin, idealLeft));
+
+    const estH = contactsOpen ? Math.min(260, window.innerHeight * 0.45) : 76;
+    const spaceAbove = r.top - margin;
+    const preferAbove = spaceAbove >= estH + 12;
+
+    if (preferAbove) {
+      setAnchor({
+        top: r.top - 8,
+        left,
+        transform: "translateY(-100%)",
+      });
+    } else {
+      setAnchor({
+        top: r.bottom + 8,
+        left,
+        transform: "none",
+      });
+    }
+  }, [contactsOpen]);
 
   useEffect(() => {
     function handleClick(e: MouseEvent) {
-      if (menuRef.current && !menuRef.current.contains(e.target as Node)) {
-        setOpen(false);
-        setContactsOpen(false);
-      }
+      const t = e.target as HTMLElement;
+      if (rootRef.current?.contains(t)) return;
+      if (t.closest?.("[data-share-popover]")) return;
+      setOpen(false);
+      setContactsOpen(false);
     }
-    if (open) document.addEventListener("mousedown", handleClick);
-    return () => document.removeEventListener("mousedown", handleClick);
-  }, [open]);
+    if (open) {
+      document.addEventListener("mousedown", handleClick);
+      window.addEventListener("resize", computeAnchor);
+      window.addEventListener("scroll", computeAnchor, true);
+    }
+    return () => {
+      document.removeEventListener("mousedown", handleClick);
+      window.removeEventListener("resize", computeAnchor);
+      window.removeEventListener("scroll", computeAnchor, true);
+    };
+  }, [open, computeAnchor]);
+
+  useEffect(() => {
+    if (open) computeAnchor();
+  }, [contactsOpen, open, computeAnchor]);
 
   const handleOpenContacts = async () => {
     setContactsOpen(true);
@@ -81,143 +141,180 @@ export function ShareMenu({ opportunityId }: { opportunityId: string }) {
     }
   };
 
-  const shareUrl = typeof window !== "undefined"
-    ? `${window.location.origin}/opportunities/${opportunityId}`
-    : "";
+  const shareUrl =
+    typeof window !== "undefined" ? `${window.location.origin}/opportunities/${opportunityId}` : "";
+
+  const popoverClass =
+    "fixed z-[1000] flex max-w-[calc(100vw-1rem)] flex-wrap justify-center gap-1 rounded-xl border border-[var(--glass-border)] bg-[color-mix(in_srgb,var(--page-bg)_98%,transparent)] p-2 shadow-2xl backdrop-blur-xl sm:flex-nowrap sm:justify-start";
+
+  const popover = typeof document !== "undefined"
+    ? createPortal(
+        <AnimatePresence>
+          {open && anchor && !contactsOpen && (
+            <motion.div
+              data-share-popover
+              initial={{ opacity: 0, y: 4 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: 4 }}
+              className={popoverClass}
+              style={{
+                top: anchor.top,
+                left: anchor.left,
+                transform: anchor.transform,
+              }}
+              onClick={(e) => e.stopPropagation()}
+            >
+              {showContactsRecommendation && (
+                <button
+                  type="button"
+                  onClick={() => void handleOpenContacts()}
+                  className={shareIconBtnClass}
+                  title="Контакты"
+                >
+                  <HugeiconsIcon icon={UserGroupIcon} size={20} className="text-[var(--brand-cyan)]" />
+                  <span className="text-[var(--text-secondary)]">Контакты</span>
+                </button>
+              )}
+              <a
+                href={`https://t.me/share/url?url=${encodeURIComponent(shareUrl)}&text=${encodeURIComponent("Посмотри эту возможность!")}`}
+                target="_blank"
+                rel="noreferrer"
+                className={shareIconBtnClass}
+                title="Telegram"
+              >
+                <span className="text-[#26A5E4]">
+                  <TelegramIcon />
+                </span>
+                <span className="text-[var(--text-secondary)]">Telegram</span>
+              </a>
+              <a
+                href={`https://api.whatsapp.com/send?text=${encodeURIComponent("Посмотри эту возможность! " + shareUrl)}`}
+                target="_blank"
+                rel="noreferrer"
+                className={shareIconBtnClass}
+                title="WhatsApp"
+              >
+                <span className="text-[#25D366]">
+                  <WhatsAppIcon />
+                </span>
+                <span className="text-[var(--text-secondary)]">WhatsApp</span>
+              </a>
+              <a
+                href={`https://vk.com/share.php?url=${encodeURIComponent(shareUrl)}`}
+                target="_blank"
+                rel="noreferrer"
+                className={shareIconBtnClass}
+                title="VK"
+              >
+                <span className="text-[#0077FF]">
+                  <VKIcon />
+                </span>
+                <span className="text-[var(--text-secondary)]">VK</span>
+              </a>
+            </motion.div>
+          )}
+          {open && anchor && contactsOpen && (
+            <motion.div
+              data-share-popover
+              initial={{ opacity: 0, y: 4 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: 4 }}
+              className={`${popoverClass} w-[min(20rem,calc(100vw-1.5rem))] max-h-[min(16rem,45vh)] flex-col overflow-y-auto`}
+              style={{
+                top: anchor.top,
+                left: anchor.left,
+                transform: anchor.transform,
+              }}
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="mb-2 flex w-full shrink-0 items-center justify-between">
+                <p className="text-sm font-semibold text-[var(--text-primary)]">Выберите контакт</p>
+                <button
+                  type="button"
+                  onClick={() => setContactsOpen(false)}
+                  className="text-xs text-[var(--text-secondary)] hover:text-[var(--text-primary)]"
+                >
+                  ← Назад
+                </button>
+              </div>
+
+              {loadingContacts ? (
+                <div className="flex h-20 w-full items-center justify-center">
+                  <div className="h-6 w-6 animate-spin rounded-full border-2 border-[var(--brand-cyan)] border-t-transparent" />
+                </div>
+              ) : contacts.length === 0 ? (
+                <div className="py-4 text-center text-sm text-[var(--text-secondary)]">
+                  <p>Нет контактов для рекомендации</p>
+                  <p className="mt-1 text-xs">Контакты со статусом &quot;не ищу работу&quot; или запретом рекомендаций не отображаются</p>
+                </div>
+              ) : (
+                <div className="w-full space-y-2">
+                  {contacts.map((c) => (
+                    <div
+                      key={c.peerId}
+                      className="flex items-center justify-between gap-2 rounded-lg border border-[var(--glass-border)] p-2"
+                    >
+                      <div className="flex min-w-0 items-center gap-2">
+                        <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-[var(--brand-magenta)] to-[var(--brand-orange)]">
+                          {c.avatarUrl ? (
+                            <img src={c.avatarUrl} alt="" className="h-full w-full rounded-full object-cover" />
+                          ) : (
+                            <span className="text-xs font-bold text-white">{c.name[0]}</span>
+                          )}
+                        </div>
+                        <div className="min-w-0">
+                          <p className="truncate text-sm font-medium text-[var(--text-primary)]">{c.name}</p>
+                          <p className="truncate text-[10px] text-[var(--text-secondary)]">
+                            {c.skills?.slice(0, 2).join(", ")}
+                          </p>
+                        </div>
+                      </div>
+                      <button
+                        type="button"
+                        disabled={sending === c.peerId}
+                        onClick={() => void handleRecommend(c.peerId)}
+                        className="shrink-0 rounded-lg bg-[var(--brand-cyan)]/20 px-3 py-2 text-xs font-medium text-[var(--brand-cyan)] transition hover:bg-[var(--brand-cyan)]/30 disabled:opacity-50"
+                      >
+                        {sending === c.peerId ? "..." : "Рекомендовать"}
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </motion.div>
+          )}
+        </AnimatePresence>,
+        document.body,
+      )
+    : null;
 
   return (
-    <div className="relative" ref={menuRef}>
+    <div className={cn("relative", shareButtonClassName?.includes("w-full") && "w-full")} ref={rootRef}>
       <button
+        ref={btnRef}
         type="button"
         onClick={(e) => {
           e.preventDefault();
           e.stopPropagation();
-          setOpen(!open);
+          if (open) {
+            setOpen(false);
+            setContactsOpen(false);
+            return;
+          }
           setContactsOpen(false);
+          setOpen(true);
+          requestAnimationFrame(() => computeAnchor());
         }}
-        className="glass-panel inline-flex items-center gap-1.5 rounded-xl px-3 py-2.5 text-sm font-medium text-[var(--text-secondary)] transition hover:text-[var(--text-primary)]"
+        className={cn(
+          "inline-flex items-center justify-center gap-1.5 rounded-xl border border-[var(--glass-border)] bg-[var(--glass-bg)] px-3 py-2.5 text-sm font-medium text-[var(--text-primary)] shadow-sm transition hover:border-[color-mix(in_srgb,var(--brand-cyan)_45%,var(--glass-border))] hover:bg-[var(--glass-bg-strong)]",
+          shareButtonClassName,
+        )}
         title="Поделиться"
       >
         <HugeiconsIcon icon={Share01Icon} size={16} />
         <span className="hidden sm:inline">Поделиться</span>
       </button>
-
-      <AnimatePresence>
-        {open && !contactsOpen && (
-          <motion.div
-            initial={{ opacity: 0, scale: 0.9 }}
-            animate={{ opacity: 1, scale: 1 }}
-            exit={{ opacity: 0, scale: 0.9 }}
-            className="absolute bottom-full right-0 z-50 mb-2 flex gap-2 rounded-xl border border-[var(--glass-border)] bg-[color-mix(in_srgb,var(--page-bg)_95%,transparent)] p-2 shadow-xl backdrop-blur-xl"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <button
-              type="button"
-              onClick={() => void handleOpenContacts()}
-              className="flex flex-col items-center gap-1 rounded-lg px-3 py-2 text-xs transition hover:bg-[var(--glass-bg-strong)]"
-              title="Контакты"
-            >
-              <HugeiconsIcon icon={UserGroupIcon} size={20} className="text-[var(--brand-cyan)]" />
-              <span className="text-[var(--text-secondary)]">Контакты</span>
-            </button>
-            <a
-              href={`https://t.me/share/url?url=${encodeURIComponent(shareUrl)}&text=${encodeURIComponent("Посмотри эту возможность!")}`}
-              target="_blank"
-              rel="noreferrer"
-              className="flex flex-col items-center gap-1 rounded-lg px-3 py-2 text-xs transition hover:bg-[var(--glass-bg-strong)]"
-              title="Telegram"
-            >
-              <span className="text-[#26A5E4]"><TelegramIcon /></span>
-              <span className="text-[var(--text-secondary)]">Telegram</span>
-            </a>
-            <a
-              href={`https://api.whatsapp.com/send?text=${encodeURIComponent("Посмотри эту возможность! " + shareUrl)}`}
-              target="_blank"
-              rel="noreferrer"
-              className="flex flex-col items-center gap-1 rounded-lg px-3 py-2 text-xs transition hover:bg-[var(--glass-bg-strong)]"
-              title="WhatsApp"
-            >
-              <span className="text-[#25D366]"><WhatsAppIcon /></span>
-              <span className="text-[var(--text-secondary)]">WhatsApp</span>
-            </a>
-            <a
-              href={`https://vk.com/share.php?url=${encodeURIComponent(shareUrl)}`}
-              target="_blank"
-              rel="noreferrer"
-              className="flex flex-col items-center gap-1 rounded-lg px-3 py-2 text-xs transition hover:bg-[var(--glass-bg-strong)]"
-              title="VK"
-            >
-              <span className="text-[#0077FF]"><VKIcon /></span>
-              <span className="text-[var(--text-secondary)]">VK</span>
-            </a>
-          </motion.div>
-        )}
-
-        {open && contactsOpen && (
-          <motion.div
-            initial={{ opacity: 0, y: 8 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: 8 }}
-            className="absolute bottom-full right-0 z-50 mb-2 w-80 max-h-72 overflow-y-auto rounded-xl border border-[var(--glass-border)] bg-[color-mix(in_srgb,var(--page-bg)_95%,transparent)] p-3 shadow-xl backdrop-blur-xl"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <div className="mb-2 flex items-center justify-between">
-              <p className="text-sm font-semibold text-[var(--text-primary)]">Выберите контакт</p>
-              <button
-                type="button"
-                onClick={() => setContactsOpen(false)}
-                className="text-xs text-[var(--text-secondary)] hover:text-[var(--text-primary)]"
-              >
-                ← Назад
-              </button>
-            </div>
-
-            {loadingContacts ? (
-              <div className="flex h-20 items-center justify-center">
-                <div className="h-6 w-6 animate-spin rounded-full border-2 border-[var(--brand-cyan)] border-t-transparent" />
-              </div>
-            ) : contacts.length === 0 ? (
-              <div className="py-4 text-center text-sm text-[var(--text-secondary)]">
-                <p>Нет контактов для рекомендации</p>
-                <p className="mt-1 text-xs">Контакты со статусом &quot;не ищу работу&quot; или запретом рекомендаций не отображаются</p>
-              </div>
-            ) : (
-              <div className="space-y-2">
-                {contacts.map((c) => (
-                  <div
-                    key={c.peerId}
-                    className="flex items-center justify-between gap-2 rounded-lg border border-[var(--glass-border)] p-2"
-                  >
-                    <div className="flex items-center gap-2 min-w-0">
-                      <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-[var(--brand-magenta)] to-[var(--brand-orange)]">
-                        {c.avatarUrl ? (
-                          <img src={c.avatarUrl} alt="" className="h-full w-full rounded-full object-cover" />
-                        ) : (
-                          <span className="text-xs font-bold text-white">{c.name[0]}</span>
-                        )}
-                      </div>
-                      <div className="min-w-0">
-                        <p className="truncate text-sm font-medium text-[var(--text-primary)]">{c.name}</p>
-                        <p className="truncate text-[10px] text-[var(--text-secondary)]">
-                          {c.skills?.slice(0, 2).join(", ")}
-                        </p>
-                      </div>
-                    </div>
-                    <button
-                      type="button"
-                      disabled={sending === c.peerId}
-                      onClick={() => void handleRecommend(c.peerId)}
-                      className="shrink-0 rounded-lg bg-[var(--brand-cyan)]/20 px-3 py-1 text-xs font-medium text-[var(--brand-cyan)] transition hover:bg-[var(--brand-cyan)]/30 disabled:opacity-50"
-                    >
-                      {sending === c.peerId ? "..." : "Рекомендовать"}
-                    </button>
-                  </div>
-                ))}
-              </div>
-            )}
-          </motion.div>
-        )}
-      </AnimatePresence>
+      {popover}
     </div>
   );
 }

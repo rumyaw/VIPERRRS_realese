@@ -86,10 +86,10 @@ export default function CompanyPage() {
             </label>
             <p
               className={cn(
-                "mt-3 inline-flex rounded-full px-3 py-1 text-xs font-medium",
+                "status-badge-pill mt-3 inline-flex rounded-full px-3 py-1 text-xs font-medium",
                 emp.verified
-                  ? "bg-emerald-500/15 text-emerald-700 dark:text-emerald-300"
-                  : "bg-amber-500/15 text-amber-700 dark:text-amber-200",
+                  ? "border border-emerald-800/35 bg-emerald-200 !text-black shadow-sm dark:border-transparent dark:bg-emerald-500/15 dark:!text-emerald-200"
+                  : "border border-amber-800/35 bg-amber-200 !text-black shadow-sm dark:border-transparent dark:bg-amber-500/15 dark:!text-amber-200",
               )}
             >
               {emp.verified ? "Верифицировано" : "Ожидает верификации"}

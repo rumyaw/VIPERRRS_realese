@@ -73,6 +73,7 @@ func NewRouter(
 			r.Get("/employer/public-profile/{userId}", cabinetH.EmployerPublicProfile)
 
 			r.With(mw.RequireRoles("employer")).Get("/employer/opportunities", cabinetH.EmployerOpportunities)
+			r.With(mw.RequireRoles("employer")).Get("/employer/opportunities/{opportunityId}", cabinetH.EmployerGetOpportunity)
 			r.With(mw.RequireRoles("employer")).Post("/employer/opportunities", cabinetH.EmployerCreateOpportunity)
 			r.With(mw.RequireRoles("employer")).Get("/employer/applications", cabinetH.EmployerApplications)
 			r.With(mw.RequireRoles("employer")).Patch("/employer/applications/{applicationId}", cabinetH.EmployerUpdateApplicationStatus)
@@ -81,6 +82,7 @@ func NewRouter(
 			r.With(mw.RequireRoles("curator")).Get("/curator/companies/pending", cabinetH.CuratorPendingCompanies)
 			r.With(mw.RequireRoles("curator")).Patch("/curator/companies/{companyId}/verification", cabinetH.CuratorCompanyVerification)
 			r.With(mw.RequireRoles("curator")).Get("/curator/opportunities/pending", cabinetH.CuratorPendingOpportunities)
+			r.With(mw.RequireRoles("curator")).Get("/curator/opportunities/{opportunityId}", cabinetH.CuratorGetOpportunity)
 			r.With(mw.RequireRoles("curator")).Patch("/curator/opportunities/{opportunityId}/status", cabinetH.CuratorOpportunityStatus)
 
 			r.With(mw.RequireRoles("curator")).Get("/admin/stats", adminH.Stats)

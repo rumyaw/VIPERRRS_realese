@@ -11,6 +11,7 @@ import { createEmployerOpportunity } from "@/lib/api";
 import type { Opportunity, OpportunityType, WorkFormat } from "@/lib/types";
 import { cn } from "@/lib/cn";
 import { useToast } from "@/hooks/useToast";
+import { SkillPicker } from "@/components/ui/SkillPicker";
 
 const noSalaryTypes: OpportunityType[] = ["event", "mentorship"];
 
@@ -28,19 +29,19 @@ export default function CreateOpportunityPage() {
     }
   }, [user, router]);
 
+  const [tagList, setTagList] = useState<string[]>([]);
   const [form, setForm] = useState({
     title: "",
     shortDescription: "",
-    fullDescription: "",
     type: "vacancy_junior" as OpportunityType,
     workFormat: "hybrid" as WorkFormat,
     locationLabel: "",
     salaryMin: "",
     salaryMax: "",
-    currency: "RUB",
-    tags: "",
     mediaUrl: "" as string,
     validUntil: "",
+    eventStart: "",
+    eventEnd: "",
   });
 
   const emp = user?.employer;
@@ -90,15 +91,37 @@ export default function CreateOpportunityPage() {
     }
   };
 
+  const reverseGeocode = async (lat: number, lon: number) => {
+    const apiKey = process.env.NEXT_PUBLIC_YANDEX_MAPS_API_KEY;
+    if (!apiKey) return;
+    try {
+      const url = `https://geocode-maps.yandex.ru/1.x/?apikey=${encodeURIComponent(apiKey)}&geocode=${lon},${lat}&format=json&results=1`;
+      const res = await fetch(url);
+      const data = await res.json();
+      const geo = data?.response?.GeoObjectCollection?.featureMember?.[0]?.GeoObject;
+      const text =
+        geo?.metaDataProperty?.GeocoderMetaData?.text ??
+        geo?.name ??
+        (typeof geo?.description === "string" ? `${geo.name}, ${geo.description}` : null);
+      if (text && typeof text === "string") {
+        setForm((f) => ({ ...f, locationLabel: text }));
+        showToast("Адрес подставлен по точке на карте", "success");
+      }
+    } catch {
+      showToast("Не удалось определить адрес по карте", "error");
+    }
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setSaving(true);
     try {
       const isFree = noSalaryTypes.includes(form.type);
+      const isEvent = form.type === "event";
       await createEmployerOpportunity({
         title: form.title,
         shortDescription: form.shortDescription,
-        fullDescription: form.fullDescription || form.shortDescription,
+        fullDescription: form.shortDescription,
         companyName: emp.companyName,
         type: form.type,
         workFormat: form.workFormat,
@@ -106,14 +129,16 @@ export default function CreateOpportunityPage() {
         lat: selectedCoords?.[0],
         lng: selectedCoords?.[1],
         contacts: { email: user?.email ?? "" },
-        tags: form.tags.split(",").map(t => t.trim()).filter(Boolean),
+        tags: tagList,
         level: "junior",
         employment: "full",
         salaryMin: isFree ? undefined : (form.salaryMin ? parseInt(form.salaryMin) : undefined),
         salaryMax: isFree ? undefined : (form.salaryMax ? parseInt(form.salaryMax) : undefined),
-        currency: form.currency,
+        currency: "RUB",
         mediaUrl: form.mediaUrl || undefined,
-        validUntil: form.validUntil || undefined,
+        validUntil: isEvent ? undefined : (form.validUntil || undefined),
+        eventStart: isEvent ? (form.eventStart || undefined) : undefined,
+        eventEnd: isEvent ? (form.eventEnd || undefined) : undefined,
       });
       showToast("Карточка отправлена на модерацию", "success");
       router.push("/employer/opportunities");
@@ -141,15 +166,15 @@ export default function CreateOpportunityPage() {
     eventDate: null,
     salaryMin: form.salaryMin ? parseInt(form.salaryMin) : null,
     salaryMax: form.salaryMax ? parseInt(form.salaryMax) : null,
-    currency: form.currency,
+    currency: "RUB",
     contacts: {},
-    tags: form.tags.split(",").map(t => t.trim()).filter(Boolean),
+    tags: tagList,
     level: "junior",
     employment: "full",
   } as Opportunity] : [];
 
   return (
-    <div className="mx-auto max-w-5xl space-y-6">
+    <div className="mx-auto max-w-6xl space-y-6 px-1 sm:px-0">
       <div className="flex flex-wrap items-center justify-between gap-4">
         <div>
           <h1 className="text-2xl font-bold text-[var(--text-primary)]">Создать карточку</h1>
@@ -160,7 +185,7 @@ export default function CreateOpportunityPage() {
         </Link>
       </div>
 
-      <div className="grid gap-6 lg:grid-cols-2">
+      <div className="grid grid-cols-1 gap-6 xl:grid-cols-[minmax(0,1fr)_min(100%,22rem)]">
         <motion.form 
           initial={{ opacity: 0, x: -20 }} 
           animate={{ opacity: 1, x: 0 }} 
@@ -188,16 +213,6 @@ export default function CreateOpportunityPage() {
                 value={form.shortDescription}
                 onChange={(e) => setForm(f => ({ ...f, shortDescription: e.target.value }))}
                 placeholder="Основные задачи и требования"
-              />
-            </div>
-
-            <div>
-              <label className="text-sm font-medium text-[var(--text-secondary)]">Полное описание</label>
-              <textarea
-                className="glass-input mt-1 min-h-[120px] w-full px-4 py-3 text-sm"
-                value={form.fullDescription}
-                onChange={(e) => setForm(f => ({ ...f, fullDescription: e.target.value }))}
-                placeholder="Детальное описание, условия, требования"
               />
             </div>
 
@@ -251,63 +266,75 @@ export default function CreateOpportunityPage() {
               </div>
             </div>
 
-            <div>
-              <label className="text-sm font-medium text-[var(--text-secondary)]">Действительно до</label>
-              <input
-                type="date"
-                className="glass-input mt-1 w-full px-4 py-3 text-sm"
-                value={form.validUntil}
-                onChange={(e) => setForm(f => ({ ...f, validUntil: e.target.value }))}
-              />
-            </div>
+            {form.type === "event" ? (
+              <div className="grid gap-4 sm:grid-cols-2">
+                <div>
+                  <label className="text-sm font-medium text-[var(--text-secondary)]">Дата проведения с</label>
+                  <input
+                    type="date"
+                    className="glass-input mt-1 w-full px-4 py-3 text-sm"
+                    value={form.eventStart}
+                    onChange={(e) => setForm((f) => ({ ...f, eventStart: e.target.value }))}
+                  />
+                </div>
+                <div>
+                  <label className="text-sm font-medium text-[var(--text-secondary)]">по</label>
+                  <input
+                    type="date"
+                    className="glass-input mt-1 w-full px-4 py-3 text-sm"
+                    value={form.eventEnd}
+                    onChange={(e) => setForm((f) => ({ ...f, eventEnd: e.target.value }))}
+                  />
+                </div>
+              </div>
+            ) : (
+              <div>
+                <label className="text-sm font-medium text-[var(--text-secondary)]">Действительно до</label>
+                <input
+                  type="date"
+                  className="glass-input mt-1 w-full px-4 py-3 text-sm"
+                  value={form.validUntil}
+                  onChange={(e) => setForm((f) => ({ ...f, validUntil: e.target.value }))}
+                />
+              </div>
+            )}
 
             {!noSalaryTypes.includes(form.type) && (
-              <div className="grid gap-4 sm:grid-cols-3">
-                <div>
-                  <label className="text-sm font-medium text-[var(--text-secondary)]">Зарплата от</label>
-                  <input
-                    type="number"
-                    className="glass-input mt-1 w-full px-4 py-3 text-sm"
-                    value={form.salaryMin}
-                    onChange={(e) => setForm(f => ({ ...f, salaryMin: e.target.value }))}
-                    placeholder="80000"
-                  />
-                </div>
-                <div>
-                  <label className="text-sm font-medium text-[var(--text-secondary)]">Зарплата до</label>
-                  <input
-                    type="number"
-                    className="glass-input mt-1 w-full px-4 py-3 text-sm"
-                    value={form.salaryMax}
-                    onChange={(e) => setForm(f => ({ ...f, salaryMax: e.target.value }))}
-                    placeholder="120000"
-                  />
-                </div>
-                <div>
-                  <label className="text-sm font-medium text-[var(--text-secondary)]">Валюта</label>
-                  <select
-                    className="glass-select mt-1 w-full px-4 py-3 text-sm"
-                    value={form.currency}
-                    onChange={(e) => setForm(f => ({ ...f, currency: e.target.value }))}
-                  >
-                    <option value="RUB">RUB</option>
-                    <option value="USD">USD</option>
-                    <option value="EUR">EUR</option>
-                  </select>
+              <div>
+                <p className="text-sm font-medium text-[var(--text-secondary)]">Зарплата, ₽</p>
+                <p className="mt-0.5 text-xs text-[var(--text-secondary)]">Указывается только в рублях</p>
+                <div className="mt-2 grid gap-4 sm:grid-cols-2">
+                  <div>
+                    <label className="text-xs font-medium text-[var(--text-secondary)]">От</label>
+                    <input
+                      type="number"
+                      className="glass-input input-no-spinner mt-1 w-full px-4 py-3 text-sm"
+                      value={form.salaryMin}
+                      onChange={(e) => setForm(f => ({ ...f, salaryMin: e.target.value }))}
+                      placeholder="80000"
+                    />
+                  </div>
+                  <div>
+                    <label className="text-xs font-medium text-[var(--text-secondary)]">До</label>
+                    <input
+                      type="number"
+                      className="glass-input input-no-spinner mt-1 w-full px-4 py-3 text-sm"
+                      value={form.salaryMax}
+                      onChange={(e) => setForm(f => ({ ...f, salaryMax: e.target.value }))}
+                      placeholder="120000"
+                    />
+                  </div>
                 </div>
               </div>
             )}
 
-            <div>
-              <label className="text-sm font-medium text-[var(--text-secondary)]">Теги (через запятую)</label>
-              <input
-                type="text"
-                className="glass-input mt-1 w-full px-4 py-3 text-sm"
-                value={form.tags}
-                onChange={(e) => setForm(f => ({ ...f, tags: e.target.value }))}
-                placeholder="React, TypeScript, Next.js"
-              />
-            </div>
+            <SkillPicker
+              label="Теги и стек"
+              searchPlaceholder="Найти тег..."
+              customPlaceholder="Свой тег..."
+              selected={tagList}
+              onChange={setTagList}
+            />
 
             <div>
               <label className="text-sm font-medium text-[var(--text-secondary)]">Изображение</label>
@@ -361,8 +388,11 @@ export default function CreateOpportunityPage() {
               opportunities={previewOpps}
               favoriteIds={[]}
               selectable
-              onMapClick={(coords) => setSelectedCoords(coords)}
-              className="h-[300px] w-full rounded-xl"
+              onMapClick={(coords) => {
+                setSelectedCoords(coords);
+                void reverseGeocode(coords[0], coords[1]);
+              }}
+              className="h-[min(42vh,320px)] w-full rounded-xl sm:h-[300px]"
             />
             {selectedCoords && (
               <p className="mt-2 text-xs text-[var(--text-secondary)]">

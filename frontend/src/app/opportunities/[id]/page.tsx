@@ -15,6 +15,7 @@ import { fetchOpportunityById, createApplicantApplication, fetchApplicantApplica
 import { addServerFavorite, removeServerFavorite } from "@/lib/api";
 import { useToast } from "@/hooks/useToast";
 import { ShareMenu } from "@/components/opportunities/ShareMenu";
+import { cardActionPrimary, cardActionSecondary } from "@/lib/card-actions";
 
 const YandexMap = dynamic(
   () => import("@/components/map/YandexMap").then((m) => m.YandexMap),
@@ -102,41 +103,43 @@ export default function OpportunityPage() {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4 pb-[max(0.5rem,env(safe-area-inset-bottom))] sm:space-y-6">
       <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }}>
         <Link href="/" className="text-sm text-[var(--text-secondary)] hover:text-[var(--text-primary)]">
           ← Назад к поиску
         </Link>
       </motion.div>
 
-      <div className="grid gap-6 lg:grid-cols-[1.1fr_0.9fr]">
-        <GlassPanel className="overflow-hidden p-0">
+      <div className="grid gap-4 min-[700px]:gap-6 lg:grid-cols-[1.05fr_0.95fr]">
+        <GlassPanel className="overflow-visible p-0">
           {opp.mediaUrl && (
             <div
-              className="h-56 w-full bg-cover bg-center sm:h-72"
+              className="h-44 w-full overflow-hidden rounded-t-[1.2rem] bg-cover bg-center min-[375px]:h-52 sm:h-64 md:h-72"
               style={{ backgroundImage: `url(${opp.mediaUrl})` }}
             />
           )}
-          <div className="space-y-4 p-6 sm:p-8">
+          <div className="space-y-4 p-4 min-[400px]:p-6 sm:p-8">
             <div className="flex flex-wrap gap-2">
-              <span className="rounded-full bg-[var(--glass-bg-strong)] px-3 py-1 text-xs font-medium text-[var(--text-secondary)]">
+              <span className="card-meta-chip rounded-full bg-[var(--glass-bg-strong)] px-3 py-1 text-xs font-medium text-[var(--text-secondary)]">
                 {typeLabels[opp.type]}
               </span>
-              <span className="rounded-full bg-[var(--glass-bg-strong)] px-3 py-1 text-xs font-medium text-[var(--text-secondary)]">
+              <span className="card-meta-chip rounded-full bg-[var(--glass-bg-strong)] px-3 py-1 text-xs font-medium text-[var(--text-secondary)]">
                 {formatLabels[opp.workFormat]}
               </span>
-              <span className="rounded-full bg-[var(--glass-bg-strong)] px-3 py-1 text-xs font-medium text-[var(--text-secondary)]">
+              <span className="card-meta-chip rounded-full bg-[var(--glass-bg-strong)] px-3 py-1 text-xs font-medium text-[var(--text-secondary)]">
                 {employmentLabels[opp.employment]}
               </span>
             </div>
-            <h1 className="text-3xl font-bold text-[var(--text-primary)]">{opp.title}</h1>
+            <h1 className="text-xl font-bold text-[var(--text-primary)] min-[400px]:text-2xl sm:text-3xl">
+              {opp.title}
+            </h1>
             <Link
               href={`/employer/profile/${opp.companyId}`}
               className="text-lg text-[var(--brand-magenta)] hover:underline"
             >
               {opp.companyName}
             </Link>
-            <div className="prose prose-invert max-w-none text-[var(--text-secondary)]">
+            <div className="prose prose-neutral max-w-none text-[var(--text-secondary)] dark:prose-invert">
               <p className="whitespace-pre-wrap">{opp.fullDescription}</p>
             </div>
             <div className="flex flex-wrap gap-2">
@@ -159,11 +162,19 @@ export default function OpportunityPage() {
                 <p className="mt-1 text-[var(--text-primary)]">{opp.publishedAt}</p>
               </div>
               <div>
-                <p className="text-xs uppercase text-[var(--text-secondary)]">Срок / дата</p>
+                <p className="text-xs uppercase text-[var(--text-secondary)]">
+                  {opp.type === "event" ? "Даты мероприятия" : "Срок / дата"}
+                </p>
                 <p className="mt-1 text-[var(--text-primary)]">
-                  {opp.eventDate
-                    ? new Date(opp.eventDate).toLocaleString("ru-RU")
-                    : opp.validUntil ?? "—"}
+                  {opp.type === "event" && opp.eventDate && opp.validUntil
+                    ? `с ${new Date(opp.eventDate).toLocaleDateString("ru-RU")} по ${new Date(opp.validUntil).toLocaleDateString("ru-RU")}`
+                    : opp.type === "event" && opp.eventDate
+                      ? new Date(opp.eventDate).toLocaleString("ru-RU")
+                      : opp.validUntil
+                        ? new Date(opp.validUntil).toLocaleDateString("ru-RU")
+                        : opp.eventDate
+                          ? new Date(opp.eventDate).toLocaleString("ru-RU")
+                          : "—"}
                 </p>
               </div>
               <div>
@@ -205,65 +216,70 @@ export default function OpportunityPage() {
               </ul>
             </div>
 
-            <div className="flex flex-wrap gap-3">
-              <button
-                type="button"
-                onClick={() => {
-                  if (!user) {
-                    showToast("Войдите или зарегистрируйтесь, чтобы добавить в избранное", "info");
-                    return;
-                  }
-                  toggle(opp.id);
-                  if (user.role === "applicant") {
-                    if (has(opp.id)) {
-                      removeServerFavorite(opp.id).catch(() => {});
-                    } else {
-                      addServerFavorite(opp.id).catch(() => {});
+            <div className="flex flex-col gap-2 border-t border-[var(--glass-border)] pt-6">
+              <div className="grid grid-cols-1 gap-2 min-[400px]:grid-cols-2">
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (!user) {
+                      showToast("Войдите или зарегистрируйтесь, чтобы добавить в избранное", "info");
+                      return;
                     }
-                  }
-                }}
-                className={cn(
-                  "glass-panel rounded-xl px-5 py-3 text-sm font-semibold",
-                  has(opp.id) && "text-[var(--brand-orange)]",
-                )}
-              >
-                {has(opp.id) ? "★ В избранном" : "☆ Добавить в избранное"}
-              </button>
-              {!user && (
-                <Link
-                  href="/login"
-                  className="rounded-xl bg-[linear-gradient(135deg,var(--brand-magenta),var(--brand-orange))] px-5 py-3 text-sm font-semibold text-white shadow-lg"
-                >
-                  Войти, чтобы откликнуться
-                </Link>
-              )}
-              {user?.role === "applicant" && (
-                <>
-                  {alreadyApplied ? (
-                    <span className="rounded-xl border border-emerald-500/40 bg-emerald-500/10 px-5 py-3 text-sm font-medium text-emerald-700 dark:text-emerald-300">
-                      Отклик уже отправлен
-                    </span>
-                  ) : (
-                    <button
-                      type="button"
-                      onClick={() => setApplyOpen(true)}
-                      className="rounded-xl bg-[linear-gradient(135deg,var(--brand-magenta),var(--brand-orange))] px-5 py-3 text-sm font-semibold text-white shadow-lg transition hover:opacity-95"
-                    >
-                      Откликнуться с резюме
-                    </button>
+                    toggle(opp.id);
+                    if (user.role === "applicant") {
+                      if (has(opp.id)) {
+                        removeServerFavorite(opp.id).catch(() => {});
+                      } else {
+                        addServerFavorite(opp.id).catch(() => {});
+                      }
+                    }
+                  }}
+                  className={cn(
+                    cardActionSecondary,
+                    "font-semibold",
+                    has(opp.id) && "border-[color-mix(in_srgb,var(--brand-orange)_45%,var(--glass-border))] text-[var(--brand-orange)]",
                   )}
-                  <ShareMenu opportunityId={opp.id} />
-                </>
-              )}
+                >
+                  {has(opp.id) ? "★ В избранном" : "☆ Добавить в избранное"}
+                </button>
+                {!user ? (
+                  <Link href="/login" className={cardActionPrimary}>
+                    Войти, чтобы откликнуться
+                  </Link>
+                ) : null}
+                {user?.role === "applicant" && !alreadyApplied ? (
+                  <button type="button" onClick={() => setApplyOpen(true)} className={cardActionPrimary}>
+                    Откликнуться с резюме
+                  </button>
+                ) : null}
+              </div>
+              {user?.role === "applicant" && alreadyApplied ? (
+                <span
+                  className={cn(
+                    cardActionSecondary,
+                    "flex min-h-[44px] items-center justify-center border-emerald-600/35 bg-emerald-50 text-center text-emerald-950 dark:border-emerald-500/40 dark:bg-emerald-500/10 dark:text-emerald-200",
+                  )}
+                >
+                  Отклик уже отправлен
+                </span>
+              ) : null}
+              <ShareMenu
+                opportunityId={opp.id}
+                showContactsRecommendation={user?.role === "applicant"}
+                shareButtonClassName="w-full min-h-[44px] justify-center"
+              />
             </div>
           </div>
         </GlassPanel>
 
-        <div className="space-y-6">
-          <GlassPanel className="overflow-hidden p-1">
-            <YandexMap opportunities={[opp]} favoriteIds={favoriteIds} />
+        <div className="min-w-0 space-y-4">
+          <GlassPanel className="overflow-hidden p-0.5 sm:p-1">
+            <YandexMap
+              opportunities={[opp]}
+              favoriteIds={favoriteIds}
+              className="h-[min(50dvh,380px)] w-full rounded-xl sm:h-[min(55vh,480px)] lg:rounded-2xl"
+            />
           </GlassPanel>
-
         </div>
       </div>
 
@@ -271,7 +287,7 @@ export default function OpportunityPage() {
         <motion.div
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
-          className="fixed inset-0 z-[100] flex items-end justify-center bg-black/60 p-4 backdrop-blur-sm sm:items-center"
+          className="fixed inset-0 z-[100] flex items-end justify-center bg-black/60 p-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] pt-8 backdrop-blur-sm min-[500px]:items-center min-[500px]:p-4"
           role="dialog"
           aria-modal
           onClick={() => setApplyOpen(false)}
@@ -280,7 +296,7 @@ export default function OpportunityPage() {
             initial={{ y: 40, opacity: 0 }}
             animate={{ y: 0, opacity: 1 }}
             onClick={(e) => e.stopPropagation()}
-            className="max-h-[85vh] w-full max-w-lg overflow-y-auto rounded-2xl border border-[var(--glass-border)] bg-[var(--page-bg)] p-6 shadow-2xl"
+            className="max-h-[min(85dvh,32rem)] w-full max-w-lg overflow-y-auto rounded-2xl border border-[var(--glass-border)] bg-[var(--page-bg)] p-4 shadow-2xl min-[500px]:max-h-[85vh] min-[500px]:p-6"
           >
             <h2 className="text-lg font-semibold text-[var(--text-primary)]">Отправка отклика</h2>
             <p className="mt-2 text-sm text-[var(--text-secondary)]">
@@ -290,19 +306,11 @@ export default function OpportunityPage() {
             <div className="mt-4 max-h-48 overflow-y-auto rounded-xl border border-[var(--glass-border)] bg-[var(--glass-bg)] p-3 text-xs text-[var(--text-secondary)] whitespace-pre-wrap">
               {buildResumeSnapshot(user.applicant)}
             </div>
-            <div className="mt-4 flex flex-wrap gap-2">
-              <button
-                type="button"
-                onClick={submitApplication}
-                className="flex-1 rounded-xl bg-[linear-gradient(135deg,var(--brand-magenta),var(--brand-orange))] py-3 text-sm font-semibold text-white"
-              >
+            <div className="mt-4 grid grid-cols-1 gap-2 min-[360px]:grid-cols-2">
+              <button type="button" onClick={submitApplication} className={cn(cardActionPrimary, "w-full")}>
                 Отправить
               </button>
-              <button
-                type="button"
-                onClick={() => setApplyOpen(false)}
-                className="rounded-xl border border-[var(--glass-border)] px-4 py-3 text-sm text-[var(--text-primary)]"
-              >
+              <button type="button" onClick={() => setApplyOpen(false)} className={cn(cardActionSecondary, "w-full")}>
                 Отмена
               </button>
             </div>

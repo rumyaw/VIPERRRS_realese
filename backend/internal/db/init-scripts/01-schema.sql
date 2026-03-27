@@ -96,6 +96,7 @@ CREATE TABLE IF NOT EXISTS opportunities (
   employment employment_type NOT NULL DEFAULT 'full',
   media_url text,
   moderation_status text NOT NULL DEFAULT 'approved',
+  view_count bigint NOT NULL DEFAULT 0,
   created_at timestamptz NOT NULL DEFAULT now(),
   updated_at timestamptz NOT NULL DEFAULT now()
 );

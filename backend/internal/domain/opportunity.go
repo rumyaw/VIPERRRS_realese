@@ -29,6 +29,8 @@ type Opportunity struct {
 	Level            string
 	Employment       string
 	MediaURL         *string
+	ModerationStatus string
+	ViewCount        int64
 	CreatedAt        time.Time
 	UpdatedAt        time.Time
 }

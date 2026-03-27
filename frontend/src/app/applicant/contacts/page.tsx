@@ -23,6 +23,7 @@ import {
 } from "@/lib/api";
 import type { ContactRequestApi, SearchApplicantApi } from "@/lib/types";
 import { useToast } from "@/hooks/useToast";
+import { applicationStatusBadge, applicationActionButton } from "@/lib/status-badges";
 import { HugeiconsIcon } from "@hugeicons/react";
 import {
   Mail01Icon,
@@ -154,7 +155,7 @@ export default function ContactsPage() {
   const archivedRecs = recommendations.filter((r) => r.viewed);
 
   return (
-    <div className="mx-auto max-w-4xl space-y-6">
+    <div className="mx-auto max-w-4xl space-y-4 min-[400px]:space-y-6">
       <div className="flex flex-wrap items-center justify-between gap-4">
         <div>
           <h1 className="text-2xl font-bold text-[var(--text-primary)]">Контакты</h1>
@@ -168,15 +169,15 @@ export default function ContactsPage() {
         </Link>
       </div>
 
-      {/* Tabs */}
-      <div className="flex flex-wrap gap-2">
+      {/* Tabs: горизонтальный скролл на узких экранах (SE / mini) */}
+      <div className="-mx-1 flex gap-2 overflow-x-auto pb-1 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
         {tabs.map((t) => (
           <button
             key={t.id}
             type="button"
             onClick={() => setTab(t.id)}
             className={cn(
-              "rounded-full px-4 py-2 text-sm font-medium transition",
+              "shrink-0 rounded-full px-4 py-2.5 text-sm font-medium transition min-[400px]:py-2",
               tab === t.id
                 ? "bg-[linear-gradient(135deg,color-mix(in_srgb,var(--brand-purple)_70%,var(--brand-cyan)),var(--brand-magenta))] text-white shadow-md"
                 : "glass-panel text-[var(--text-secondary)] hover:text-[var(--text-primary)]",
@@ -209,15 +210,15 @@ export default function ContactsPage() {
               {/* Поиск соискателей */}
               <GlassPanel className="p-5">
                 <h2 className="text-lg font-semibold text-[var(--text-primary)]">Найти соискателя</h2>
-                <div className="mt-3 flex gap-2">
-                  <div className="relative flex-1">
+                <div className="mt-3 flex flex-col gap-2 min-[420px]:flex-row min-[420px]:items-stretch">
+                  <div className="relative min-w-0 flex-1">
                     <HugeiconsIcon
                       icon={Search01Icon}
                       size={16}
                       className="absolute left-3 top-1/2 -translate-y-1/2 text-[var(--text-secondary)]"
                     />
                     <input
-                      className="glass-input w-full py-3 pl-10 pr-4 text-sm"
+                      className="glass-input min-h-[44px] w-full py-3 pl-10 pr-4 text-sm"
                       placeholder="Имя или email..."
                       value={searchQuery}
                       onChange={(e) => setSearchQuery(e.target.value)}
@@ -230,7 +231,7 @@ export default function ContactsPage() {
                     type="button"
                     disabled={searching || !searchQuery.trim()}
                     onClick={() => void handleSearch()}
-                    className="rounded-xl bg-[linear-gradient(135deg,var(--brand-magenta),var(--brand-orange))] px-5 py-3 text-sm font-semibold text-white shadow-lg transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-60"
+                    className="min-h-[44px] shrink-0 rounded-xl bg-[linear-gradient(135deg,var(--brand-magenta),var(--brand-orange))] px-5 py-3 text-sm font-semibold text-white shadow-lg transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-60 min-[420px]:px-6"
                   >
                     {searching ? "Поиск..." : "Найти"}
                   </button>
@@ -241,9 +242,9 @@ export default function ContactsPage() {
                     {searchResults.map((s) => (
                       <div
                         key={s.userId}
-                        className="flex items-center justify-between gap-3 rounded-xl border border-[var(--glass-border)] p-3"
+                        className="flex flex-col gap-3 rounded-xl border border-[var(--glass-border)] p-3 min-[480px]:flex-row min-[480px]:items-center min-[480px]:justify-between"
                       >
-                        <div className="flex items-center gap-3">
+                        <div className="flex min-w-0 items-center gap-3">
                           <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-[var(--brand-magenta)] to-[var(--brand-orange)]">
                             {s.avatarUrl ? (
                               <img src={s.avatarUrl} alt="" className="h-full w-full rounded-full object-cover" />
@@ -258,19 +259,19 @@ export default function ContactsPage() {
                             <p className="text-xs text-[var(--text-secondary)]">{s.skills?.slice(0, 3).join(", ")}</p>
                           </div>
                         </div>
-                        <div className="flex gap-2">
+                        <div className="flex flex-wrap gap-2 min-[480px]:justify-end">
                           <Link
                             href={`/applicant/profile/${s.userId}`}
-                            className="rounded-lg border border-[var(--glass-border)] px-3 py-1.5 text-xs text-[var(--text-secondary)] hover:text-[var(--text-primary)]"
+                            className="inline-flex min-h-[40px] min-w-[5.5rem] items-center justify-center rounded-lg border border-[var(--glass-border)] px-3 py-2 text-xs font-medium text-[var(--text-secondary)] hover:text-[var(--text-primary)]"
                           >
                             Профиль
                           </Link>
                           {s.isContact ? (
-                            <span className="rounded-lg bg-emerald-500/10 px-3 py-1.5 text-xs text-emerald-300">
+                            <span className={cn("rounded-lg px-3 py-1.5 text-xs", applicationStatusBadge.accepted)}>
                               В контактах
                             </span>
                           ) : s.hasPending ? (
-                            <span className="rounded-lg bg-yellow-500/10 px-3 py-1.5 text-xs text-yellow-300">
+                            <span className={cn("rounded-lg px-3 py-1.5 text-xs", applicationStatusBadge.pending)}>
                               Заявка отправлена
                             </span>
                           ) : (
@@ -352,7 +353,7 @@ export default function ContactsPage() {
                               <button
                                 type="button"
                                 onClick={() => void handleRemoveContact(c.peerId)}
-                                className="rounded-lg border border-red-500/30 px-2 py-1 text-xs text-red-300 hover:bg-red-500/10"
+                                className="rounded-lg border border-red-800/35 bg-red-50 px-2 py-1 text-xs font-medium text-red-900 hover:bg-red-100 dark:border-red-500/30 dark:bg-transparent dark:text-red-200 dark:hover:bg-red-500/10"
                                 title="Удалить контакт"
                               >
                                 <HugeiconsIcon icon={Delete01Icon} size={12} />
@@ -388,7 +389,7 @@ export default function ContactsPage() {
                     transition={{ delay: idx * 0.05 }}
                   >
                     <GlassPanel className="p-5">
-                      <div className="flex items-start gap-4">
+                      <div className="flex flex-col gap-4 sm:flex-row sm:items-start">
                         <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-[var(--brand-cyan)] to-[var(--brand-magenta)]">
                           {req.avatarUrl ? (
                             <img src={req.avatarUrl} alt="" className="h-full w-full rounded-full object-cover" />
@@ -420,11 +421,14 @@ export default function ContactsPage() {
                             <p className="mt-2 text-sm text-[var(--text-secondary)]">{req.bio}</p>
                           )}
                         </div>
-                        <div className="flex gap-2">
+                        <div className="flex w-full flex-wrap gap-2 sm:w-auto sm:justify-end">
                           <button
                             type="button"
                             onClick={() => void handleAccept(req.id)}
-                            className="flex items-center gap-1 rounded-xl bg-emerald-500/20 px-4 py-2 text-sm font-medium text-emerald-300 transition hover:bg-emerald-500/30"
+                            className={cn(
+                              "flex min-h-[44px] flex-1 items-center justify-center gap-1 rounded-xl px-4 py-2 text-sm font-medium transition sm:flex-initial sm:min-h-0",
+                              applicationActionButton.accept,
+                            )}
                           >
                             <HugeiconsIcon icon={CheckmarkCircle01Icon} size={16} />
                             Принять
@@ -432,7 +436,10 @@ export default function ContactsPage() {
                           <button
                             type="button"
                             onClick={() => void handleReject(req.id)}
-                            className="flex items-center gap-1 rounded-xl border border-red-500/30 px-4 py-2 text-sm font-medium text-red-300 transition hover:bg-red-500/10"
+                            className={cn(
+                              "flex min-h-[44px] flex-1 items-center justify-center gap-1 rounded-xl px-4 py-2 text-sm font-medium transition sm:flex-initial sm:min-h-0",
+                              applicationActionButton.reject,
+                            )}
                           >
                             <HugeiconsIcon icon={Cancel01Icon} size={16} />
                             Отклонить
