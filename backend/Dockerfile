@@ -6,7 +6,9 @@ COPY go.mod go.sum ./
 RUN go mod download && go mod tidy
 
 COPY . .
-RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -o /out/tramplin-api ./cmd/api
+# Не фиксировать GOARCH=amd64: на Apple Silicon иначе получается amd64-бинарник под QEMU,
+# что даёт SIGSEGV в netpoll при DNS/PostgreSQL. Сборка под архитектуру образа (BuildKit).
+RUN CGO_ENABLED=0 GOOS=linux go build -o /out/tramplin-api ./cmd/api
 
 FROM alpine:3.20
 
