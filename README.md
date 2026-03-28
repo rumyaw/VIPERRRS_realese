@@ -1,6 +1,14 @@
 <div align="center">
 
-<img src="docs/readme/logo_team.png" alt="Команда VIPERRRS" width="320" />
+<img src="frontend/public/images/logo.png" alt="Трамплин — логотип проекта" width="200" />
+
+<br />
+
+<sub><em>Проект представлен на конкурсе Международной олимпиады <strong>«IT-Планета 2026»</strong> в направлении <strong>Прикладное программирование if…else</strong></em></sub>
+
+<br /><br />
+
+<img src="docs/readme/logo_team.png" alt="Команда VIPERRRS" width="280" />
 
 # Трамплин
 
@@ -158,11 +166,14 @@ docker compose up --build
 2. В списке выберите **PostgreSQL** (провиженный источник из `grafana/provisioning/`).
 3. Откройте карточку датасорса и нажмите **Save & test** (**Сохранить и проверить**). Дождитесь успешной проверки.
 
-Схема переходов:
+Схема переходов (на GitHub отображается как диаграмма; локально смотрите в режиме предпросмотра с поддержкой Mermaid):
 
-<p align="center">
-  <img src="docs/readme/grafana-postgresql-datasource.svg" alt="Connections → Data sources → PostgreSQL → Save" width="720" />
-</p>
+```mermaid
+flowchart LR
+  A["Connections<br/>(Подключения)"] --> B["Data sources<br/>(Источники данных)"]
+  B --> C["PostgreSQL"]
+  C --> D["Save & test<br/>(Сохранить и проверить)"]
+```
 
 > В новых версиях Grafana пункт **Connections** может называться схоже (**Connect data**, **Data connections**); ищите раздел управления источниками данных.
 
@@ -173,9 +184,21 @@ docker compose up --build
 | **Статистика по сайту** | Раздел **Dashboards** → дашборд вроде **«Статистика по сайту»** / провиженный **«Трамплин — Обзор платформы»** (запросы к PostgreSQL: пользователи, карточки, отклики и т.д.) |
 | **Метрики потребления ресурсов** | **Drilldown** → **Metrics** (или сопоставимый пункт навигации) — данные из **Prometheus** (в т.ч. метрики контейнеров через **cAdvisor**) |
 
-<p align="center">
-  <img src="docs/readme/grafana-dashboards-nav.svg" alt="Навигация: дашборд статистики и Drilldown Metrics" width="720" />
-</p>
+Навигация к разделам с графиками:
+
+```mermaid
+flowchart TB
+  subgraph site["Статистика по сайту"]
+    direction TB
+    D1["Dashboards"] --> D2["«Статистика по сайту» / «Трамплин — Обзор платформы»"]
+    D2 -.-> D3["PostgreSQL"]
+  end
+  subgraph res["Потребление ресурсов"]
+    direction TB
+    M1["Drilldown"] --> M2["Metrics"]
+    M2 -.-> M3["Prometheus / cAdvisor"]
+  end
+```
 
 ---
 
@@ -261,7 +284,7 @@ npm run dev
 │   ├── public/
 │   └── Dockerfile
 ├── docs/
-│   └── readme/                     # Логотип команды и иллюстрации для README
+│   └── readme/                     # Логотип команды VIPERRRS (для README)
 ├── grafana/
 │   └── provisioning/
 │       ├── dashboards/             # dashboard.yml, tramplin.json
@@ -394,22 +417,28 @@ cd backend && go build -o bin/api ./cmd/api
 
 ## Команда
 
-Проект выполнен командой **VIPERRRS**.
+<div align="center">
 
-<p align="center">
-  <img src="docs/readme/logo_team.png" alt="VIPERRRS" width="240" />
-</p>
+<img src="docs/readme/logo_team.png" alt="VIPERRRS" width="220" />
 
-| Участник | Роль |
-|----------|------|
-| **Уразаев Р. Г.** | Разработка |
-| **Кузнецов В. Г.** | Разработка |
-| **Адигамов И. В.** | Разработка |
+### Команда **VIPERRRS**
+
+*Международная олимпиада «IT-Планета 2026» · Прикладное программирование if…else*
+
+</div>
+
+<br />
+
+| № | Участник |
+|---|----------|
+| 1 | **Уразаев** Руслан Галимьянович |
+| 2 | **Кузнецов** Вячеслав Георгиевич |
+| 3 | **Адигамов** Ильнур Вилюрович |
 
 ---
 
 <div align="center">
 
-**Трамплин** · команда **VIPERRRS**
+**Трамплин** · команда **VIPERRRS** · **IT-Планета 2026**
 
 </div>
