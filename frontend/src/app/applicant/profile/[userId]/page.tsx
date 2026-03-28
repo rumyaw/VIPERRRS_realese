@@ -18,6 +18,7 @@ import {
   CheckmarkCircle01Icon,
   Briefcase01Icon,
 } from "@hugeicons/core-free-icons";
+import { navLinkButtonClass } from "@/lib/nav-link-styles";
 
 const statusLabels: Record<string, string> = {
   pending: "На рассмотрении",
@@ -83,7 +84,7 @@ function PublicProfilePageInner() {
     return (
       <GlassPanel className="mx-auto mt-12 max-w-3xl p-8 text-center">
         <p className="text-[var(--text-primary)]">Профиль не найден.</p>
-        <Link href={backHref} className="mt-4 inline-block text-[var(--brand-cyan)] hover:underline">
+        <Link href={backHref} className={`${navLinkButtonClass} mt-4 inline-flex`}>
           {fromEmployer ? "К откликам" : "Вернуться к контактам"}
         </Link>
       </GlassPanel>
@@ -92,7 +93,7 @@ function PublicProfilePageInner() {
 
   return (
     <div className="mx-auto max-w-3xl space-y-6">
-      <Link href={backHref} className="text-sm text-[var(--text-secondary)] hover:text-[var(--text-primary)]">
+      <Link href={backHref} className={navLinkButtonClass}>
         {backLabel}
       </Link>
 

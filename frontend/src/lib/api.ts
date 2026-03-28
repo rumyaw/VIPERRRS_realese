@@ -32,7 +32,17 @@ type OpportunityApi = {
   mediaUrl?: string;
   viewCount?: number;
   moderationStatus?: string;
+  revisionModerationStatus?: string | null;
 };
+
+function parseRevisionModerationStatus(item: OpportunityApi & Record<string, unknown>): string | undefined {
+  const raw = item.revisionModerationStatus ?? item.revision_moderation_status;
+  if (raw == null) return undefined;
+  if (typeof raw !== "string") return undefined;
+  const t = raw.trim().toLowerCase();
+  if (t === "pending" || t === "rejected") return t;
+  return undefined;
+}
 
 function toOpportunity(item: OpportunityApi): Opportunity {
   return {
@@ -59,6 +69,7 @@ function toOpportunity(item: OpportunityApi): Opportunity {
     mediaUrl: item.mediaUrl,
     viewCount: item.viewCount,
     moderationStatus: item.moderationStatus,
+    revisionModerationStatus: parseRevisionModerationStatus(item as OpportunityApi & Record<string, unknown>),
   };
 }
 
@@ -200,7 +211,7 @@ export async function deleteEmployerOpportunity(opportunityId: string): Promise<
   });
 }
 
-export async function createEmployerOpportunity(input: {
+export type EmployerOpportunityPayload = {
   title: string;
   shortDescription: string;
   fullDescription: string;
@@ -221,9 +232,22 @@ export async function createEmployerOpportunity(input: {
   validUntil?: string;
   eventStart?: string;
   eventEnd?: string;
-}): Promise<Opportunity> {
+};
+
+export async function createEmployerOpportunity(input: EmployerOpportunityPayload): Promise<Opportunity> {
   const data = await apiFetch<OpportunityApi>("/employer/opportunities", {
     method: "POST",
+    body: JSON.stringify(input),
+  });
+  return toOpportunity(data);
+}
+
+export async function updateEmployerOpportunity(
+  opportunityId: string,
+  input: EmployerOpportunityPayload,
+): Promise<Opportunity> {
+  const data = await apiFetch<OpportunityApi>(`/employer/opportunities/${encodeURIComponent(opportunityId)}`, {
+    method: "PATCH",
     body: JSON.stringify(input),
   });
   return toOpportunity(data);
@@ -470,6 +494,20 @@ export async function removeApplicantContact(peerId: string): Promise<void> {
 
 // --- Public employer profile ---
 
+export type PublicEmployerOpportunityCard = {
+  id: string;
+  title: string;
+  shortDescription: string;
+  type: string;
+  workFormat: string;
+  locationLabel: string;
+  tags: string[];
+  salaryMin?: number;
+  salaryMax?: number;
+  currency?: string;
+  coords?: [number, number];
+};
+
 export type PublicEmployerProfileApi = {
   userId: string;
   companyName: string;
@@ -479,6 +517,7 @@ export type PublicEmployerProfileApi = {
   inn?: string;
   verified: boolean;
   logoUrl?: string;
+  opportunities?: PublicEmployerOpportunityCard[];
 };
 
 export async function fetchPublicEmployerProfile(userId: string): Promise<PublicEmployerProfileApi> {
@@ -541,6 +580,8 @@ export type AdminOpportunity = {
   companyName: string;
   type: string;
   moderationStatus: string;
+  /** pending | rejected — очередь модерации правки при moderationStatus === approved */
+  revisionModerationStatus?: string | null;
   createdAt: string;
 };
 

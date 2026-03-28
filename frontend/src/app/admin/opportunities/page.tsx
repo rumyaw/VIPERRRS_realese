@@ -32,7 +32,15 @@ const STATUS_LABELS: Record<string, { label: string; color: string }> = {
   approved: { label: "Одобрено", color: moderationStatusBadge.approved },
   pending: { label: "На модерации", color: moderationStatusBadge.pending },
   rejected: { label: "Отклонено", color: moderationStatusBadge.rejected },
+  revision_pending: { label: "Правка на модерации", color: moderationStatusBadge.revision_pending },
+  revision_rejected: { label: "Правка отклонена", color: moderationStatusBadge.revision_rejected },
 };
+
+function adminOppStatusDisplay(opp: AdminOpportunity): { label: string; color: string } {
+  if (opp.revisionModerationStatus === "pending") return STATUS_LABELS.revision_pending;
+  if (opp.revisionModerationStatus === "rejected") return STATUS_LABELS.revision_rejected;
+  return STATUS_LABELS[opp.moderationStatus] || STATUS_LABELS.pending;
+}
 
 export default function AdminOpportunitiesPage() {
   const { user } = useAuth();
@@ -129,7 +137,7 @@ export default function AdminOpportunitiesPage() {
           }}
           options={[
             { value: "", label: "Все статусы" },
-            { value: "pending", label: "На модерации" },
+            { value: "pending", label: "На модерации (новые и правки)" },
             { value: "approved", label: "Одобрены" },
             { value: "rejected", label: "Отклонены" },
           ]}
@@ -150,7 +158,10 @@ export default function AdminOpportunitiesPage() {
         <>
           <div className="space-y-2">
             {opps.map((opp, idx) => {
-              const st = STATUS_LABELS[opp.moderationStatus] || STATUS_LABELS.pending;
+              const st = adminOppStatusDisplay(opp);
+              const revPending = opp.revisionModerationStatus === "pending";
+              const showApprove = opp.moderationStatus !== "approved" || revPending;
+              const showReject = opp.moderationStatus !== "rejected" || revPending;
               return (
                 <motion.div
                   key={opp.id}
@@ -176,20 +187,20 @@ export default function AdminOpportunitiesPage() {
                       {st.label}
                     </span>
                     <div className="flex gap-1">
-                      {opp.moderationStatus !== "approved" && (
+                      {showApprove && (
                         <button
                           onClick={() => handleModerate(opp.id, "approved")}
                           className={`rounded-lg p-2 transition ${moderationIconButton.approve}`}
-                          title="Одобрить"
+                          title={revPending ? "Одобрить правку" : "Одобрить"}
                         >
                           <HugeiconsIcon icon={CheckmarkCircle01Icon} size={16} />
                         </button>
                       )}
-                      {opp.moderationStatus !== "rejected" && (
+                      {showReject && (
                         <button
                           onClick={() => handleModerate(opp.id, "rejected")}
                           className={`rounded-lg p-2 transition ${moderationIconButton.reject}`}
-                          title="Отклонить"
+                          title={revPending ? "Отклонить правку" : "Отклонить"}
                         >
                           <HugeiconsIcon icon={Cancel01Icon} size={16} />
                         </button>

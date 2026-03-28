@@ -7,6 +7,7 @@ import { useEffect, useState } from "react";
 import { useAuth } from "@/contexts/auth-context";
 import { GlassPanel } from "@/components/ui/GlassPanel";
 import { cn } from "@/lib/cn";
+import { navLinkButtonClass } from "@/lib/nav-link-styles";
 import { updateEmployerProfile } from "@/lib/api";
 
 export default function CompanyPage() {
@@ -52,7 +53,7 @@ export default function CompanyPage() {
           <h1 className="text-2xl font-bold text-[var(--text-primary)]">Компания</h1>
           <p className="mt-1 text-[var(--text-secondary)]">Управление профилем работодателя</p>
         </div>
-        <Link href="/" className="text-sm text-[var(--brand-cyan)] hover:underline">
+        <Link href="/" className={navLinkButtonClass}>
           ← На главную
         </Link>
       </div>

@@ -276,7 +276,7 @@ export function YandexMap({
   return (
     <div
       ref={containerRef}
-      className={`${isDark ? "ymaps-dark-map" : ""} ${className ?? "h-[min(62vh,560px)] w-full overflow-hidden rounded-2xl"}`}
+      className={`${isDark ? "ymaps-dark-map" : ""} relative z-0 ${className ?? "h-[min(62vh,560px)] w-full overflow-hidden rounded-2xl"}`}
     />
   );
 }

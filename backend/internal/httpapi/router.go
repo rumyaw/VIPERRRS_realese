@@ -74,6 +74,7 @@ func NewRouter(
 
 			r.With(mw.RequireRoles("employer")).Get("/employer/opportunities", cabinetH.EmployerOpportunities)
 			r.With(mw.RequireRoles("employer")).Get("/employer/opportunities/{opportunityId}", cabinetH.EmployerGetOpportunity)
+			r.With(mw.RequireRoles("employer")).Patch("/employer/opportunities/{opportunityId}", cabinetH.EmployerUpdateOpportunity)
 			r.With(mw.RequireRoles("employer")).Delete("/employer/opportunities/{opportunityId}", cabinetH.EmployerDeleteOpportunity)
 			r.With(mw.RequireRoles("employer")).Post("/employer/opportunities", cabinetH.EmployerCreateOpportunity)
 			r.With(mw.RequireRoles("employer")).Get("/employer/applications", cabinetH.EmployerApplications)

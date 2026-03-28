@@ -13,6 +13,7 @@ import { HugeiconsIcon } from "@hugeicons/react";
 import { UserGroupIcon, Briefcase01Icon, CheckmarkCircle01Icon, Building01Icon, AlertCircleIcon } from "@hugeicons/core-free-icons";
 import { cn } from "@/lib/cn";
 import { useToast } from "@/hooks/useToast";
+import { navLinkButtonClass } from "@/lib/nav-link-styles";
 
 // Динамический импорт chart.js для избежания SSR issues
 import dynamic from "next/dynamic";
@@ -119,10 +120,7 @@ export default function AdminDashboardPage() {
           >
             Grafana
           </a>
-          <Link
-            href="/"
-            className="rounded-xl border border-[var(--glass-border)] bg-[var(--glass-bg)] px-4 py-2 text-sm text-[var(--text-secondary)] transition hover:text-[var(--text-primary)]"
-          >
+          <Link href="/" className={navLinkButtonClass}>
             ← На главную
           </Link>
         </div>

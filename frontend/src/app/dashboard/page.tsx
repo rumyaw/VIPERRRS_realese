@@ -8,6 +8,7 @@ import { useAuth } from "@/contexts/auth-context";
 import { ApplicantCabinet } from "@/components/dashboard/ApplicantCabinet";
 import { GlassPanel } from "@/components/ui/GlassPanel";
 import { roleLabelRu } from "@/lib/role-labels";
+import { navLinkButtonClass } from "@/lib/nav-link-styles";
 
 export default function DashboardPage() {
   const { user } = useAuth();
@@ -59,7 +60,7 @@ export default function DashboardPage() {
             Роль: <span className="text-[var(--text-primary)]">{roleLabelRu(user.role)}</span>
           </p>
         </div>
-        <Link href="/" className="text-sm text-[var(--brand-cyan)] hover:underline">
+        <Link href="/" className={navLinkButtonClass}>
           ← На главную
         </Link>
       </div>

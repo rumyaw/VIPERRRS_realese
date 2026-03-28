@@ -5,11 +5,12 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/go-chi/chi/v5"
-	"github.com/google/uuid"
 	"tramplin/internal/httpapi/middleware"
 	"tramplin/internal/httpapi/respond"
 	"tramplin/internal/repository"
+
+	"github.com/go-chi/chi/v5"
+	"github.com/google/uuid"
 )
 
 type Cabinet struct {
@@ -308,7 +309,7 @@ func (h *Cabinet) EmployerOpportunities(w http.ResponseWriter, r *http.Request) 
 	}
 	out := make([]map[string]any, 0, len(items))
 	for i := range items {
-		out = append(out, opportunityDTO(&items[i]))
+		out = append(out, employerOpportunityDTO(&items[i]))
 	}
 	respond.JSON(w, http.StatusOK, map[string]any{"items": out})
 }
@@ -446,7 +447,106 @@ func (h *Cabinet) EmployerGetOpportunity(w http.ResponseWriter, r *http.Request)
 		respond.Error(w, http.StatusNotFound, "not found")
 		return
 	}
-	respond.JSON(w, http.StatusOK, opportunityDTO(o))
+	respond.JSON(w, http.StatusOK, employerOpportunityDTO(o))
+}
+
+func (h *Cabinet) EmployerUpdateOpportunity(w http.ResponseWriter, r *http.Request) {
+	uid, ok := r.Context().Value(middleware.UserIDKey).(string)
+	if !ok || uid == "" {
+		respond.Error(w, http.StatusUnauthorized, "unauthorized")
+		return
+	}
+	userID, err := uuid.Parse(uid)
+	if err != nil {
+		respond.Error(w, http.StatusBadRequest, "invalid user id")
+		return
+	}
+	verified, vErr := h.Users.IsEmployerVerified(r.Context(), userID)
+	if vErr != nil || !verified {
+		respond.Error(w, http.StatusForbidden, "аккаунт не верифицирован")
+		return
+	}
+	idStr := chi.URLParam(r, "opportunityId")
+	oppID, err := uuid.Parse(idStr)
+	if err != nil {
+		respond.Error(w, http.StatusBadRequest, "invalid id")
+		return
+	}
+	var body createOpportunityBody
+	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+		respond.Error(w, http.StatusBadRequest, "invalid json")
+		return
+	}
+	parseDate := func(s *string) (*time.Time, error) {
+		if s == nil || *s == "" {
+			return nil, nil
+		}
+		t, err := time.Parse("2006-01-02", *s)
+		if err != nil {
+			return nil, err
+		}
+		return &t, nil
+	}
+	var validUntil *time.Time
+	var eventAt *time.Time
+	if body.Type == "event" {
+		es, err := parseDate(body.EventStart)
+		if err != nil {
+			respond.Error(w, http.StatusBadRequest, "invalid eventStart")
+			return
+		}
+		ee, err := parseDate(body.EventEnd)
+		if err != nil {
+			respond.Error(w, http.StatusBadRequest, "invalid eventEnd")
+			return
+		}
+		eventAt = es
+		validUntil = ee
+	} else {
+		v, err := parseDate(body.ValidUntil)
+		if err != nil {
+			respond.Error(w, http.StatusBadRequest, "invalid validUntil")
+			return
+		}
+		validUntil = v
+	}
+	fullDesc := body.FullDescription
+	if fullDesc == "" {
+		fullDesc = body.ShortDescription
+	}
+	o, err := h.Opps.UpdateByEmployer(
+		r.Context(),
+		oppID, userID,
+		body.Title,
+		body.ShortDescription,
+		fullDesc,
+		body.CompanyName,
+		body.Type,
+		body.WorkFormat,
+		body.LocationLabel,
+		body.Contacts,
+		body.Tags,
+		body.Level,
+		body.Employment,
+		body.Lng,
+		body.Lat,
+		body.MediaURL,
+		body.SalaryMin,
+		body.SalaryMax,
+		body.Currency,
+		validUntil,
+		eventAt,
+		body.Type == "event",
+	)
+	if err != nil {
+		respond.Error(w, http.StatusBadRequest, "failed to update opportunity")
+		return
+	}
+	if o == nil {
+		respond.Error(w, http.StatusNotFound, "not found")
+		return
+	}
+	respond.JSON(w, http.StatusOK, employerOpportunityDTO(o))
 }
 
 func (h *Cabinet) EmployerDeleteOpportunity(w http.ResponseWriter, r *http.Request) {
@@ -492,12 +592,12 @@ func (h *Cabinet) EmployerApplications(w http.ResponseWriter, r *http.Request) {
 	out := make([]map[string]any, 0, len(items))
 	for _, it := range items {
 		out = append(out, map[string]any{
-			"id":            it.ID.String(),
-			"opportunityId": it.OpportunityID.String(),
-			"opportunity":   it.Opportunity,
-			"status":        it.Status,
+			"id":             it.ID.String(),
+			"opportunityId":  it.OpportunityID.String(),
+			"opportunity":    it.Opportunity,
+			"status":         it.Status,
 			"resumeSnapshot": it.ResumeSnapshot,
-			"createdAt":     it.CreatedAt,
+			"createdAt":      it.CreatedAt,
 			"applicant": map[string]any{
 				"id":          it.ApplicantID.String(),
 				"displayName": it.ApplicantName,
@@ -642,7 +742,7 @@ func (h *Cabinet) CuratorGetOpportunity(w http.ResponseWriter, r *http.Request) 
 		respond.Error(w, http.StatusNotFound, "not found")
 		return
 	}
-	respond.JSON(w, http.StatusOK, opportunityDTO(o))
+	respond.JSON(w, http.StatusOK, curatorOpportunityDTO(o))
 }
 
 type moderationBody struct {
@@ -692,14 +792,14 @@ func (h *Cabinet) ApplicantContactRequests(w http.ResponseWriter, r *http.Reques
 	out := make([]map[string]any, 0, len(items))
 	for _, it := range items {
 		m := map[string]any{
-			"id":        it.ID.String(),
+			"id":         it.ID.String(),
 			"fromUserId": it.FromUserID.String(),
-			"fromName":  it.FromName,
-			"fromEmail": it.FromEmail,
-			"skills":    it.Skills,
-			"bio":       it.Bio,
-			"status":    it.Status,
-			"createdAt": it.CreatedAt,
+			"fromName":   it.FromName,
+			"fromEmail":  it.FromEmail,
+			"skills":     it.Skills,
+			"bio":        it.Bio,
+			"status":     it.Status,
+			"createdAt":  it.CreatedAt,
 		}
 		if it.AvatarURL != nil {
 			m["avatarUrl"] = *it.AvatarURL
@@ -1023,6 +1123,36 @@ func (h *Cabinet) EmployerPublicProfile(w http.ResponseWriter, r *http.Request) 
 	}
 	if p.LogoURL != nil {
 		result["logoUrl"] = *p.LogoURL
+	}
+	opps, err := h.Opps.ListApprovedByAuthor(r.Context(), uid, 80)
+	if err == nil {
+		cards := make([]map[string]any, 0, len(opps))
+		for i := range opps {
+			o := &opps[i]
+			m := map[string]any{
+				"id":               o.ID.String(),
+				"title":            o.Title,
+				"shortDescription": o.ShortDescription,
+				"type":             o.Type,
+				"workFormat":       o.WorkFormat,
+				"locationLabel":    o.LocationLabel,
+				"tags":             o.Tags,
+			}
+			if o.Lon != nil && o.Lat != nil {
+				m["coords"] = []float64{*o.Lat, *o.Lon}
+			}
+			if o.SalaryMin != nil {
+				m["salaryMin"] = *o.SalaryMin
+			}
+			if o.SalaryMax != nil {
+				m["salaryMax"] = *o.SalaryMax
+			}
+			m["currency"] = o.Currency
+			cards = append(cards, m)
+		}
+		result["opportunities"] = cards
+	} else {
+		result["opportunities"] = []map[string]any{}
 	}
 	respond.JSON(w, http.StatusOK, result)
 }

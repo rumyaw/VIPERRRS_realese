@@ -11,6 +11,7 @@ import type { Opportunity } from "@/lib/types";
 import { cn } from "@/lib/cn";
 import { useToast } from "@/hooks/useToast";
 import { moderationStatusBadge } from "@/lib/status-badges";
+import { navLinkButtonClass } from "@/lib/nav-link-styles";
 
 const typeLabels: Record<Opportunity["type"], string> = {
   internship: "Стажировка",
@@ -72,7 +73,7 @@ export default function AdminOpportunityPreviewPage() {
     return (
       <GlassPanel className="p-8 text-center">
         <p className="text-[var(--text-primary)]">Карточка не найдена.</p>
-        <Link href="/admin/opportunities" className="mt-4 inline-block text-[var(--brand-cyan)] hover:underline">
+        <Link href="/admin/opportunities" className={`${navLinkButtonClass} mt-4 inline-flex`}>
           ← К списку
         </Link>
       </GlassPanel>
@@ -81,17 +82,12 @@ export default function AdminOpportunityPreviewPage() {
 
   return (
     <div className="mx-auto max-w-3xl space-y-6">
-      <div className="flex flex-wrap items-center gap-3">
-        <Link href="/admin/opportunities" className="text-sm text-[var(--text-secondary)] hover:text-[var(--text-primary)]">
+      <div className="flex flex-wrap items-center gap-2">
+        <Link href="/admin/opportunities" className={navLinkButtonClass}>
           ← К списку карточек
         </Link>
         {opp.moderationStatus === "approved" && (
-          <Link
-            href={`/opportunities/${opp.id}`}
-            className="text-sm text-[var(--brand-cyan)] hover:underline"
-            target="_blank"
-            rel="noreferrer"
-          >
+          <Link href={`/opportunities/${opp.id}`} className={navLinkButtonClass} target="_blank" rel="noreferrer">
             Открыть как на сайте ↗
           </Link>
         )}

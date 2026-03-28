@@ -3,14 +3,22 @@
 import { motion } from "framer-motion";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useAuth } from "@/contexts/auth-context";
 import { GlassPanel } from "@/components/ui/GlassPanel";
+import { GlassSelect } from "@/components/ui/GlassSelect";
 import { fetchEmployerOpportunities, deleteEmployerOpportunity } from "@/lib/api";
 import { useToast } from "@/hooks/useToast";
 import type { Opportunity } from "@/lib/types";
 import { cn } from "@/lib/cn";
 import { moderationStatusBadge } from "@/lib/status-badges";
+import {
+  employerModerationFilterOptions,
+  employerModerationBadgeKey,
+  employerModerationLabel,
+  employerOppMatchesModFilter,
+} from "@/lib/employer-opportunity-status";
+import { filterResetButtonClass } from "@/lib/nav-link-styles";
 import { HugeiconsIcon } from "@hugeicons/react";
 import { PlusSignIcon, Location01Icon, Briefcase01Icon, Calendar01Icon } from "@hugeicons/core-free-icons";
 
@@ -21,6 +29,9 @@ export default function EmployerOpportunitiesPage() {
   const [opportunities, setOpportunities] = useState<Opportunity[]>([]);
   const [loading, setLoading] = useState(true);
   const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [filterQ, setFilterQ] = useState("");
+  const [filterMod, setFilterMod] = useState("");
+  const [filterType, setFilterType] = useState("");
 
   useEffect(() => {
     if (!user || user.role !== "employer") {
@@ -55,11 +66,30 @@ export default function EmployerOpportunitiesPage() {
     remote: "Удалённо",
   };
 
-  const moderationLabel = (st: string | undefined) => {
-    if (st === "approved") return "Опубликовано";
-    if (st === "rejected") return "Отклонено";
-    return "На модерации";
-  };
+  const typeFilterOptions = useMemo(
+    () => [
+      { value: "", label: "Все типы" },
+      { value: "vacancy_junior", label: "Вакансия Junior" },
+      { value: "vacancy_senior", label: "Вакансия Middle+" },
+      { value: "internship", label: "Стажировка" },
+      { value: "mentorship", label: "Менторство" },
+      { value: "event", label: "Мероприятие" },
+    ],
+    [],
+  );
+
+  const displayed = useMemo(() => {
+    const q = filterQ.trim().toLowerCase();
+    return opportunities.filter((opp) => {
+      if (!employerOppMatchesModFilter(opp, filterMod)) return false;
+      if (filterType && opp.type !== filterType) return false;
+      if (q) {
+        const hay = `${opp.title} ${opp.shortDescription}`.toLowerCase();
+        if (!hay.includes(q)) return false;
+      }
+      return true;
+    });
+  }, [opportunities, filterQ, filterMod, filterType]);
 
   const eventDatesLine = (opp: Opportunity) => {
     if (opp.eventDate && opp.validUntil) {
@@ -108,6 +138,57 @@ export default function EmployerOpportunitiesPage() {
         </div>
       </div>
 
+      {!loading && opportunities.length > 0 && (
+        <GlassPanel className="space-y-4 p-4 sm:p-5">
+          <p className="text-sm font-medium text-[var(--text-primary)]">Фильтры</p>
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
+            <div className="min-w-0 space-y-2">
+              <label className="text-xs font-medium text-[var(--text-secondary)]" htmlFor="emp-opp-q">
+                Поиск
+              </label>
+              <input
+                id="emp-opp-q"
+                className="glass-input w-full px-4 py-3 text-sm"
+                placeholder="Название или описание…"
+                value={filterQ}
+                onChange={(e) => setFilterQ(e.target.value)}
+              />
+            </div>
+            <div className="min-w-0 space-y-2">
+              <label className="text-xs font-medium text-[var(--text-secondary)]" htmlFor="emp-opp-mod">
+                Модерация
+              </label>
+              <GlassSelect
+                id="emp-opp-mod"
+                value={filterMod}
+                onChange={setFilterMod}
+                options={employerModerationFilterOptions}
+                className="w-full"
+                buttonClassName="px-4 py-3 text-sm"
+              />
+            </div>
+            <div className="min-w-0 space-y-2">
+              <label className="text-xs font-medium text-[var(--text-secondary)]" htmlFor="emp-opp-type">
+                Тип
+              </label>
+              <GlassSelect
+                id="emp-opp-type"
+                value={filterType}
+                onChange={setFilterType}
+                options={typeFilterOptions}
+                className="w-full"
+                buttonClassName="px-4 py-3 text-sm"
+              />
+            </div>
+            <div className="flex items-end">
+              <p className="pb-3 text-xs text-[var(--text-secondary)]">
+                Показано: {displayed.length} из {opportunities.length}
+              </p>
+            </div>
+          </div>
+        </GlassPanel>
+      )}
+
       {loading ? (
         <GlassPanel className="flex h-64 items-center justify-center">
           <div className="h-8 w-8 animate-spin rounded-full border-2 border-[var(--brand-cyan)] border-t-transparent" />
@@ -126,16 +207,31 @@ export default function EmployerOpportunitiesPage() {
             Создать карточку
           </Link>
         </GlassPanel>
+      ) : displayed.length === 0 ? (
+        <GlassPanel className="flex flex-col items-center gap-4 p-8 text-center">
+          <p className="text-[var(--text-primary)]">Нет карточек по выбранным фильтрам</p>
+          <button
+            type="button"
+            onClick={() => {
+              setFilterQ("");
+              setFilterMod("");
+              setFilterType("");
+            }}
+            className={filterResetButtonClass}
+          >
+            Сбросить фильтры
+          </button>
+        </GlassPanel>
       ) : (
         <div className="grid gap-4 md:grid-cols-2">
-          {opportunities.map((opp, idx) => (
+          {displayed.map((opp, idx) => (
             <motion.div
               key={opp.id}
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: idx * 0.05 }}
             >
-              <GlassPanel className="group relative overflow-hidden p-5 transition hover:border-[var(--brand-cyan)]">
+              <GlassPanel className="group relative min-w-0 overflow-hidden p-5 transition hover:border-[var(--brand-cyan)]">
                 <div className="flex items-start justify-between gap-3">
                   <div className="flex-1">
                     <div className="flex flex-wrap items-center gap-2">
@@ -145,12 +241,10 @@ export default function EmployerOpportunitiesPage() {
                       <span
                         className={cn(
                           "inline-flex rounded-full px-2 py-1 text-xs font-medium",
-                          moderationStatusBadge[
-                            (opp.moderationStatus ?? "pending") as keyof typeof moderationStatusBadge
-                          ] ?? moderationStatusBadge.pending,
+                          moderationStatusBadge[employerModerationBadgeKey(opp)],
                         )}
                       >
-                        {moderationLabel(opp.moderationStatus)}
+                        {employerModerationLabel(opp)}
                       </span>
                     </div>
                     <h3 className="mt-2 text-lg font-semibold text-[var(--text-primary)] group-hover:text-[var(--brand-cyan)] transition">
@@ -188,36 +282,47 @@ export default function EmployerOpportunitiesPage() {
                   )}
                 </div>
 
-                <div className="mt-4 flex flex-wrap gap-2">
+                <div className="mt-4 flex min-w-0 flex-nowrap items-stretch gap-1">
                   <Link
                     href={`/employer/opportunities/${opp.id}`}
-                    className="rounded-lg bg-[var(--glass-bg-strong)] px-3 py-1.5 text-xs text-[var(--text-primary)] transition hover:bg-[var(--glass-bg)]"
+                    title="Просмотр"
+                    className="flex h-9 min-w-0 flex-1 basis-0 items-center justify-center rounded-lg bg-[var(--glass-bg-strong)] px-1 text-center text-[10px] font-medium leading-tight text-[var(--text-primary)] transition hover:bg-[var(--glass-bg)] sm:px-1.5 sm:text-xs"
                   >
-                    Просмотр
+                    <span className="min-w-0 truncate">Просмотр</span>
                   </Link>
                   {opp.moderationStatus === "approved" && (
                     <Link
                       href={`/opportunities/${opp.id}`}
-                      className="rounded-lg bg-[var(--glass-bg-strong)] px-3 py-1.5 text-xs text-[var(--text-primary)] transition hover:bg-[var(--glass-bg)]"
+                      title="Как выглядит на сайте"
+                      className="flex h-9 min-w-0 flex-1 basis-0 items-center justify-center rounded-lg bg-[var(--glass-bg-strong)] px-1 text-center text-[10px] font-medium leading-tight text-[var(--text-primary)] transition hover:bg-[var(--glass-bg)] sm:px-1.5 sm:text-xs"
                       target="_blank"
                       rel="noreferrer"
                     >
-                      На сайте ↗
+                      <span className="min-w-0 truncate">Сайт ↗</span>
                     </Link>
                   )}
                   <Link
                     href={`/employer/applications?opp=${opp.id}`}
-                    className="rounded-lg bg-[var(--glass-bg-strong)] px-3 py-1.5 text-xs text-[var(--text-primary)] transition hover:bg-[var(--glass-bg)]"
+                    title="Отклики"
+                    className="flex h-9 min-w-0 flex-1 basis-0 items-center justify-center rounded-lg bg-[var(--glass-bg-strong)] px-1 text-center text-[10px] font-medium leading-tight text-[var(--text-primary)] transition hover:bg-[var(--glass-bg)] sm:px-1.5 sm:text-xs"
                   >
-                    Отклики
+                    <span className="min-w-0 truncate">Отклики</span>
+                  </Link>
+                  <Link
+                    href={`/employer/opportunities/${opp.id}/edit`}
+                    title="Редактировать"
+                    className="flex h-9 min-w-0 flex-1 basis-0 items-center justify-center rounded-lg border border-[var(--glass-border)] bg-[var(--glass-bg)] px-1 text-center text-[10px] font-medium leading-tight text-[var(--text-primary)] transition hover:bg-[var(--glass-bg-strong)] sm:px-1.5 sm:text-xs"
+                  >
+                    <span className="min-w-0 truncate">Правка</span>
                   </Link>
                   <button
                     type="button"
+                    title="Удалить карточку"
                     disabled={deletingId === opp.id}
                     onClick={() => void handleDelete(opp)}
-                    className="btn-danger-soft rounded-lg px-3 py-1.5 text-xs font-semibold transition disabled:opacity-50"
+                    className="btn-danger-soft flex h-9 min-w-0 flex-1 basis-0 items-center justify-center rounded-lg px-1 text-center text-[10px] font-semibold leading-tight transition disabled:opacity-50 sm:px-1.5 sm:text-xs"
                   >
-                    {deletingId === opp.id ? "…" : "Удалить"}
+                    <span className="min-w-0 truncate">{deletingId === opp.id ? "…" : "Удалить"}</span>
                   </button>
                 </div>
               </GlassPanel>

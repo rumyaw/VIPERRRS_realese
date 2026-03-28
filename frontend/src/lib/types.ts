@@ -58,6 +58,8 @@ export interface Opportunity {
   /** Просмотры страницы карточки (для статистики работодателя) */
   viewCount?: number;
   moderationStatus?: string;
+  /** pending | rejected — модерация правки опубликованной карточки (основная публикация не меняется до одобрения). */
+  revisionModerationStatus?: string | null;
 }
 
 export interface ApplicantProfile {

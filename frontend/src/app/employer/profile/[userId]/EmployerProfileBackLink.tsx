@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
+import { navLinkButtonClass } from "@/lib/nav-link-styles";
 
 export function EmployerProfileBackLink() {
   const searchParams = useSearchParams();
@@ -9,14 +10,14 @@ export function EmployerProfileBackLink() {
 
   if (fromAdmin) {
     return (
-      <Link href="/admin/dashboard" className="text-sm text-[var(--text-secondary)] hover:text-[var(--text-primary)]">
+      <Link href="/admin/dashboard" className={navLinkButtonClass}>
         ← К панели администратора
       </Link>
     );
   }
 
   return (
-    <Link href="/" className="text-sm text-[var(--text-secondary)] hover:text-[var(--text-primary)]">
+    <Link href="/" className={navLinkButtonClass}>
       ← На главную
     </Link>
   );

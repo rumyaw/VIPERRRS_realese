@@ -12,6 +12,7 @@ import { Check, X, Clock, User, Briefcase, ExternalLink } from "lucide-react";
 import { useToast } from "@/hooks/useToast";
 import { applicationStatusBadge, applicationActionButton } from "@/lib/status-badges";
 import { GlassSelect } from "@/components/ui/GlassSelect";
+import { navLinkButtonClass } from "@/lib/nav-link-styles";
 
 function EmployerApplicationsContent() {
   const { user } = useAuth();
@@ -221,10 +222,7 @@ function EmployerApplicationsContent() {
             {filterOpp ? "Фильтр по карточке" : "На рассмотрении — вверху; принятые и отклонённые — в свёрнутых блоках"}
           </p>
         </div>
-        <Link
-          href="/"
-          className="rounded-xl border border-[var(--glass-border)] bg-[var(--glass-bg)] px-4 py-2 text-sm text-[var(--text-secondary)] transition hover:text-[var(--text-primary)]"
-        >
+        <Link href="/" className={navLinkButtonClass}>
           ← На главную
         </Link>
       </div>

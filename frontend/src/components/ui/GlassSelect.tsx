@@ -22,7 +22,8 @@ type GlassSelectProps = {
   "aria-labelledby"?: string;
 };
 
-const DROPDOWN_Z = 10050;
+/** Выше слоёв Яндекс.Карт и оверлеев в Safari (композитинг iframe). */
+const DROPDOWN_Z = 2147483646;
 
 function measureListRect(btn: HTMLElement): ListRect {
   const r = btn.getBoundingClientRect();

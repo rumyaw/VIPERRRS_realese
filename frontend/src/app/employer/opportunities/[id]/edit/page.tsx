@@ -2,12 +2,12 @@
 
 import { motion } from "framer-motion";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { useParams, useRouter } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 import { useAuth } from "@/contexts/auth-context";
 import { GlassPanel } from "@/components/ui/GlassPanel";
 import { YandexMap } from "@/components/map/YandexMap";
-import { createEmployerOpportunity } from "@/lib/api";
+import { fetchEmployerOpportunityById, updateEmployerOpportunity } from "@/lib/api";
 import type { Opportunity, OpportunityType, WorkFormat } from "@/lib/types";
 import { cn } from "@/lib/cn";
 import { useToast } from "@/hooks/useToast";
@@ -17,24 +17,27 @@ import { navLinkButtonClass } from "@/lib/nav-link-styles";
 
 const noSalaryTypes: OpportunityType[] = ["event", "mentorship"];
 
-export default function CreateOpportunityPage() {
+function toDateInput(iso: string | null | undefined): string {
+  if (!iso) return "";
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return "";
+  return d.toISOString().slice(0, 10);
+}
+
+export default function EditOpportunityPage() {
+  const params = useParams<{ id: string }>();
   const { user } = useAuth();
   const router = useRouter();
   const { showToast } = useToast();
   const [saving, setSaving] = useState(false);
+  const [loading, setLoading] = useState(true);
   const [selectedCoords, setSelectedCoords] = useState<[number, number] | null>(null);
   const [geocoding, setGeocoding] = useState(false);
-
-  useEffect(() => {
-    if (!user || user.role !== "employer") {
-      router.replace("/dashboard");
-    }
-  }, [user, router]);
-
   const [tagList, setTagList] = useState<string[]>([]);
   const [form, setForm] = useState({
     title: "",
     shortDescription: "",
+    fullDescription: "",
     type: "vacancy_junior" as OpportunityType,
     workFormat: "hybrid" as WorkFormat,
     locationLabel: "",
@@ -46,7 +49,50 @@ export default function CreateOpportunityPage() {
     eventEnd: "",
   });
 
-  const companyNameForMap = user?.employer?.companyName ?? "";
+  useEffect(() => {
+    if (!user || user.role !== "employer") {
+      router.replace("/dashboard");
+    }
+  }, [user, router]);
+
+  useEffect(() => {
+    if (!params.id || !user || user.role !== "employer") return;
+    const ac = new AbortController();
+    setLoading(true);
+    fetchEmployerOpportunityById(params.id, ac.signal)
+      .then((opp) => {
+        if (!opp) {
+          showToast("Карточка не найдена", "error");
+          router.replace("/employer/opportunities");
+          return;
+        }
+        setForm({
+          title: opp.title,
+          shortDescription: opp.shortDescription,
+          fullDescription: opp.fullDescription || opp.shortDescription,
+          type: opp.type,
+          workFormat: opp.workFormat,
+          locationLabel: opp.locationLabel,
+          salaryMin: opp.salaryMin != null ? String(opp.salaryMin) : "",
+          salaryMax: opp.salaryMax != null ? String(opp.salaryMax) : "",
+          mediaUrl: opp.mediaUrl ?? "",
+          validUntil: opp.type === "event" ? "" : toDateInput(opp.validUntil),
+          eventStart: opp.type === "event" ? toDateInput(opp.eventDate) : "",
+          eventEnd: opp.type === "event" ? toDateInput(opp.validUntil) : "",
+        });
+        setTagList([...opp.tags]);
+        setSelectedCoords(opp.coords);
+      })
+      .catch(() => {
+        showToast("Не удалось загрузить карточку", "error");
+        router.replace("/employer/opportunities");
+      })
+      .finally(() => setLoading(false));
+    return () => ac.abort();
+  }, [params.id, user, router, showToast]);
+
+  const emp = user?.employer;
+  const companyNameForMap = emp?.companyName ?? "";
 
   const mapPreviewOpps = useMemo((): Opportunity[] => {
     if (!selectedCoords) return [];
@@ -76,7 +122,6 @@ export default function CreateOpportunityPage() {
     ];
   }, [selectedCoords, companyNameForMap]);
 
-  const emp = user?.employer;
   if (!emp) return null;
 
   if (!emp.verified) {
@@ -85,8 +130,7 @@ export default function CreateOpportunityPage() {
         <GlassPanel className="p-8 text-center">
           <h2 className="text-xl font-bold text-[var(--text-primary)]">Аккаунт не верифицирован</h2>
           <p className="mt-3 text-[var(--text-secondary)]">
-            Для публикации карточек возможностей необходимо пройти верификацию компании.
-            Обратитесь к куратору платформы.
+            Для редактирования карточек необходима верификация компании.
           </p>
           <Link href="/employer/company" className={`${navLinkButtonClass} mt-4 inline-flex`}>
             ← Профиль компании
@@ -146,14 +190,15 @@ export default function CreateOpportunityPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!params.id) return;
     setSaving(true);
     try {
       const isFree = noSalaryTypes.includes(form.type);
       const isEvent = form.type === "event";
-      await createEmployerOpportunity({
+      await updateEmployerOpportunity(params.id, {
         title: form.title,
         shortDescription: form.shortDescription,
-        fullDescription: form.shortDescription,
+        fullDescription: form.fullDescription.trim() || form.shortDescription,
         companyName: emp.companyName,
         type: form.type,
         workFormat: form.workFormat,
@@ -164,40 +209,50 @@ export default function CreateOpportunityPage() {
         tags: tagList,
         level: "junior",
         employment: "full",
-        salaryMin: isFree ? undefined : (form.salaryMin ? parseInt(form.salaryMin) : undefined),
-        salaryMax: isFree ? undefined : (form.salaryMax ? parseInt(form.salaryMax) : undefined),
+        salaryMin: isFree ? undefined : form.salaryMin ? parseInt(form.salaryMin, 10) : undefined,
+        salaryMax: isFree ? undefined : form.salaryMax ? parseInt(form.salaryMax, 10) : undefined,
         currency: "RUB",
         mediaUrl: form.mediaUrl || undefined,
-        validUntil: isEvent ? undefined : (form.validUntil || undefined),
-        eventStart: isEvent ? (form.eventStart || undefined) : undefined,
-        eventEnd: isEvent ? (form.eventEnd || undefined) : undefined,
+        validUntil: isEvent ? undefined : form.validUntil || undefined,
+        eventStart: isEvent ? form.eventStart || undefined : undefined,
+        eventEnd: isEvent ? form.eventEnd || undefined : undefined,
       });
-      showToast("Карточка отправлена на модерацию", "success");
-      router.push("/employer/opportunities");
-    } catch (e) {
-      console.error(e);
-      showToast("Не удалось создать карточку", "error");
+      showToast("Сохранено. Карточка снова отправлена на модерацию", "success");
+      router.push(`/employer/opportunities/${params.id}`);
+    } catch (err) {
+      console.error(err);
+      showToast("Не удалось сохранить изменения", "error");
     } finally {
       setSaving(false);
     }
   };
 
+  if (loading) {
+    return (
+      <GlassPanel className="mx-auto flex h-64 max-w-6xl items-center justify-center">
+        <div className="h-8 w-8 animate-spin rounded-full border-2 border-[var(--brand-cyan)] border-t-transparent" />
+      </GlassPanel>
+    );
+  }
+
   return (
     <div className="mx-auto max-w-6xl space-y-6 px-1 sm:px-0">
       <div className="flex flex-wrap items-center justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-[var(--text-primary)]">Создать карточку</h1>
-          <p className="mt-1 text-[var(--text-secondary)]">Новая возможность для студентов и выпускников</p>
+          <h1 className="text-2xl font-bold text-[var(--text-primary)]">Редактировать карточку</h1>
+          <p className="mt-1 text-[var(--text-secondary)]">
+            После сохранения карточка снова пройдёт модерацию у куратора
+          </p>
         </div>
-        <Link href="/employer/opportunities" className={navLinkButtonClass}>
-          ← Мои карточки
+        <Link href={`/employer/opportunities/${params.id}`} className={navLinkButtonClass}>
+          ← Просмотр
         </Link>
       </div>
 
       <div className="grid grid-cols-1 gap-6 xl:grid-cols-[minmax(0,1fr)_min(100%,22rem)]">
-        <motion.form 
-          initial={{ opacity: 0, x: -20 }} 
-          animate={{ opacity: 1, x: 0 }} 
+        <motion.form
+          initial={{ opacity: 0, x: -20 }}
+          animate={{ opacity: 1, x: 0 }}
           onSubmit={handleSubmit}
           className="space-y-4"
         >
@@ -209,8 +264,7 @@ export default function CreateOpportunityPage() {
                 type="text"
                 className="glass-input mt-1 w-full px-4 py-3 text-sm"
                 value={form.title}
-                onChange={(e) => setForm(f => ({ ...f, title: e.target.value }))}
-                placeholder="Junior Frontend Developer"
+                onChange={(e) => setForm((f) => ({ ...f, title: e.target.value }))}
               />
             </div>
 
@@ -220,8 +274,17 @@ export default function CreateOpportunityPage() {
                 required
                 className="glass-input mt-1 min-h-[80px] w-full px-4 py-3 text-sm"
                 value={form.shortDescription}
-                onChange={(e) => setForm(f => ({ ...f, shortDescription: e.target.value }))}
-                placeholder="Основные задачи и требования"
+                onChange={(e) => setForm((f) => ({ ...f, shortDescription: e.target.value }))}
+              />
+            </div>
+
+            <div>
+              <label className="text-sm font-medium text-[var(--text-secondary)]">Полное описание</label>
+              <textarea
+                className="glass-input mt-1 min-h-[120px] w-full px-4 py-3 text-sm"
+                value={form.fullDescription}
+                onChange={(e) => setForm((f) => ({ ...f, fullDescription: e.target.value }))}
+                placeholder="Подробности для соискателей (если пусто — используется краткое описание)"
               />
             </div>
 
@@ -265,8 +328,7 @@ export default function CreateOpportunityPage() {
                   type="text"
                   className="glass-input flex-1 px-4 py-3 text-sm"
                   value={form.locationLabel}
-                  onChange={(e) => setForm(f => ({ ...f, locationLabel: e.target.value }))}
-                  placeholder="Москва, ул. Примерная, 1"
+                  onChange={(e) => setForm((f) => ({ ...f, locationLabel: e.target.value }))}
                 />
                 <button
                   type="button"
@@ -315,7 +377,6 @@ export default function CreateOpportunityPage() {
             {!noSalaryTypes.includes(form.type) && (
               <div>
                 <p className="text-sm font-medium text-[var(--text-secondary)]">Зарплата, ₽</p>
-                <p className="mt-0.5 text-xs text-[var(--text-secondary)]">Указывается только в рублях</p>
                 <div className="mt-2 grid gap-4 sm:grid-cols-2">
                   <div>
                     <label className="text-xs font-medium text-[var(--text-secondary)]">От</label>
@@ -323,8 +384,7 @@ export default function CreateOpportunityPage() {
                       type="number"
                       className="glass-input input-no-spinner mt-1 w-full px-4 py-3 text-sm"
                       value={form.salaryMin}
-                      onChange={(e) => setForm(f => ({ ...f, salaryMin: e.target.value }))}
-                      placeholder="80000"
+                      onChange={(e) => setForm((f) => ({ ...f, salaryMin: e.target.value }))}
                     />
                   </div>
                   <div>
@@ -333,8 +393,7 @@ export default function CreateOpportunityPage() {
                       type="number"
                       className="glass-input input-no-spinner mt-1 w-full px-4 py-3 text-sm"
                       value={form.salaryMax}
-                      onChange={(e) => setForm(f => ({ ...f, salaryMax: e.target.value }))}
-                      placeholder="120000"
+                      onChange={(e) => setForm((f) => ({ ...f, salaryMax: e.target.value }))}
                     />
                   </div>
                 </div>
@@ -359,7 +418,7 @@ export default function CreateOpportunityPage() {
                   const file = e.target.files?.[0];
                   if (!file) return;
                   const reader = new FileReader();
-                  reader.onload = () => setForm(f => ({ ...f, mediaUrl: reader.result as string }));
+                  reader.onload = () => setForm((f) => ({ ...f, mediaUrl: reader.result as string }));
                   reader.readAsDataURL(file);
                 }}
               />
@@ -369,7 +428,7 @@ export default function CreateOpportunityPage() {
                   <button
                     type="button"
                     className="text-xs text-red-400 hover:text-red-300"
-                    onClick={() => setForm(f => ({ ...f, mediaUrl: "" }))}
+                    onClick={() => setForm((f) => ({ ...f, mediaUrl: "" }))}
                   >
                     Удалить
                   </button>
@@ -382,21 +441,17 @@ export default function CreateOpportunityPage() {
               disabled={saving}
               className={cn(
                 "w-full rounded-xl bg-[linear-gradient(135deg,var(--brand-magenta),var(--brand-orange))] px-5 py-3 text-sm font-semibold text-white shadow-lg transition hover:opacity-90",
-                saving && "opacity-70 cursor-not-allowed"
+                saving && "cursor-not-allowed opacity-70",
               )}
             >
-              {saving ? "Отправка..." : "Отправить на модерацию"}
+              {saving ? "Сохранение..." : "Сохранить и отправить на модерацию"}
             </button>
           </GlassPanel>
         </motion.form>
 
-        <motion.div 
-          initial={{ opacity: 0, x: 20 }} 
-          animate={{ opacity: 1, x: 0 }}
-          className="space-y-4"
-        >
+        <motion.div initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} className="space-y-4">
           <GlassPanel className="p-4">
-            <h3 className="mb-3 text-sm font-medium text-[var(--text-secondary)]">Укажите место на карте</h3>
+            <h3 className="mb-3 text-sm font-medium text-[var(--text-secondary)]">Место на карте</h3>
             <YandexMap
               opportunities={mapPreviewOpps}
               favoriteIds={[]}
@@ -412,16 +467,6 @@ export default function CreateOpportunityPage() {
                 Координаты: {selectedCoords[0].toFixed(4)}, {selectedCoords[1].toFixed(4)}
               </p>
             )}
-          </GlassPanel>
-
-          <GlassPanel className="p-4">
-            <h3 className="mb-2 text-sm font-medium text-[var(--text-primary)]">Подсказки</h3>
-            <ul className="space-y-2 text-xs text-[var(--text-secondary)]">
-              <li>• Введите адрес и нажмите «Найти» для геокодирования</li>
-              <li>• Или укажите точку на карте вручную</li>
-              <li>• Добавьте зарплатную вилку для привлечения кандидатов</li>
-              <li>• Карточка будет отправлена на модерацию</li>
-            </ul>
           </GlassPanel>
         </motion.div>
       </div>

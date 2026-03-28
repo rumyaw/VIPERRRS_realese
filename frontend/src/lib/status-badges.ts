@@ -29,6 +29,11 @@ export const moderationStatusBadge = {
     `${pill} border border-amber-800/35 bg-amber-200 text-[#2d1a0e] shadow-sm ${iconInherit} dark:border-transparent dark:bg-amber-500/15 dark:!text-amber-200`,
   rejected:
     `${pill} border border-red-800/35 bg-red-200 text-[#2d1a0e] shadow-sm ${iconInherit} dark:border-transparent dark:bg-red-500/15 dark:!text-red-200`,
+  /** Правка к уже опубликованной карточке на проверке */
+  revision_pending:
+    `${pill} border border-violet-800/35 bg-violet-200 text-[#2d1a0e] shadow-sm ${iconInherit} dark:border-transparent dark:bg-violet-500/15 dark:!text-violet-200`,
+  revision_rejected:
+    `${pill} border border-rose-800/35 bg-rose-200 text-[#2d1a0e] shadow-sm ${iconInherit} dark:border-transparent dark:bg-rose-500/15 dark:!text-rose-200`,
 } as const;
 
 export const moderationIconButton = {

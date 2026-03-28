@@ -1054,6 +1054,11 @@ WHERE r.id IN (
 CREATE UNIQUE INDEX IF NOT EXISTS idx_recommendations_from_to_opp
 ON recommendations (from_user_id, to_user_id, opportunity_id);
 `,
+
+	"0009_opportunity_pending_revision.sql": `ALTER TABLE opportunities
+  ADD COLUMN IF NOT EXISTS pending_revision jsonb,
+  ADD COLUMN IF NOT EXISTS revision_moderation_status text;
+`,
 }
 
 // migrationNames возвращает отсортированный список имен миграций

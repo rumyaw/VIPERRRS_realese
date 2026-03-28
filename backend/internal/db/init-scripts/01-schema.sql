@@ -96,6 +96,8 @@ CREATE TABLE IF NOT EXISTS opportunities (
   employment employment_type NOT NULL DEFAULT 'full',
   media_url text,
   moderation_status text NOT NULL DEFAULT 'approved',
+  pending_revision jsonb,
+  revision_moderation_status text,
   view_count bigint NOT NULL DEFAULT 0,
   created_at timestamptz NOT NULL DEFAULT now(),
   updated_at timestamptz NOT NULL DEFAULT now()

@@ -30,7 +30,11 @@ type Opportunity struct {
 	Employment       string
 	MediaURL         *string
 	ModerationStatus string
-	ViewCount        int64
-	CreatedAt        time.Time
-	UpdatedAt        time.Time
+	/** JSON черновика правки; на сайте до одобрения показываются основные поля строки. */
+	PendingRevision []byte
+	/** pending | rejected — статус проверки правки; nil если правки нет. */
+	RevisionModerationStatus *string
+	ViewCount                int64
+	CreatedAt                time.Time
+	UpdatedAt                time.Time
 }

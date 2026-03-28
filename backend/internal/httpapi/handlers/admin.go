@@ -334,25 +334,35 @@ func (h *AdminHandler) ListAllOpportunities(w http.ResponseWriter, r *http.Reque
 	offset := (page - 1) * limit
 	statusFilter := r.URL.Query().Get("status")
 
-	args := []any{}
 	where := ""
-	argIdx := 1
-	if statusFilter != "" {
-		where = fmt.Sprintf("WHERE moderation_status = $%d", argIdx)
-		args = append(args, statusFilter)
-		argIdx++
+	countArgs := []any{}
+	listArgs := []any{}
+
+	switch statusFilter {
+	case "pending":
+		// Новые карточки и правки к уже опубликованным (moderation_status остаётся approved).
+		where = `WHERE (moderation_status = 'pending' OR (revision_moderation_status = 'pending' AND pending_revision IS NOT NULL))`
+	case "approved", "rejected":
+		where = `WHERE moderation_status = $1`
+		countArgs = append(countArgs, statusFilter)
+		listArgs = append(listArgs, statusFilter)
 	}
 
 	var total int
-	if err := h.Pool.QueryRow(ctx, fmt.Sprintf("SELECT COUNT(*) FROM opportunities %s", where), args...).Scan(&total); err != nil {
+	if err := h.Pool.QueryRow(ctx, "SELECT COUNT(*) FROM opportunities "+where, countArgs...).Scan(&total); err != nil {
 		http.Error(w, `{"error":"count failed"}`, 500)
 		return
 	}
 
-	q := fmt.Sprintf(`SELECT id, title, company_name, type::text, moderation_status, created_at FROM opportunities %s ORDER BY created_at DESC LIMIT $%d OFFSET $%d`, where, argIdx, argIdx+1)
-	args = append(args, limit, offset)
+	limitArg := len(listArgs) + 1
+	offsetArg := len(listArgs) + 2
+	q := fmt.Sprintf(
+		`SELECT id, title, company_name, type::text, moderation_status, revision_moderation_status, created_at FROM opportunities %s ORDER BY created_at DESC LIMIT $%d OFFSET $%d`,
+		where, limitArg, offsetArg,
+	)
+	listArgs = append(listArgs, limit, offset)
 
-	rows, err := h.Pool.Query(ctx, q, args...)
+	rows, err := h.Pool.Query(ctx, q, listArgs...)
 	if err != nil {
 		http.Error(w, `{"error":"query failed"}`, 500)
 		return
@@ -362,14 +372,21 @@ func (h *AdminHandler) ListAllOpportunities(w http.ResponseWriter, r *http.Reque
 	items := make([]map[string]any, 0)
 	for rows.Next() {
 		var id, title, company, typ, status string
+		var revMod *string
 		var createdAt time.Time
-		if err := rows.Scan(&id, &title, &company, &typ, &status, &createdAt); err != nil {
+		if err := rows.Scan(&id, &title, &company, &typ, &status, &revMod, &createdAt); err != nil {
 			continue
 		}
-		items = append(items, map[string]any{
+		item := map[string]any{
 			"id": id, "title": title, "companyName": company, "type": typ,
 			"moderationStatus": status, "createdAt": createdAt.Format(time.RFC3339),
-		})
+		}
+		if revMod != nil && *revMod != "" {
+			item["revisionModerationStatus"] = *revMod
+		} else {
+			item["revisionModerationStatus"] = nil
+		}
+		items = append(items, item)
 	}
 
 	w.Header().Set("Content-Type", "application/json")
@@ -394,7 +411,7 @@ func (h *AdminHandler) ExportStats(w http.ResponseWriter, r *http.Request) {
 	h.Pool.QueryRow(ctx, "SELECT COUNT(*) FROM opportunities").Scan(&stats.TotalOpportunities)
 	h.Pool.QueryRow(ctx, "SELECT COUNT(*) FROM applications").Scan(&stats.TotalApplications)
 	h.Pool.QueryRow(ctx, "SELECT COUNT(*) FROM employer_profiles WHERE verified = false").Scan(&stats.PendingVerifications)
-	h.Pool.QueryRow(ctx, "SELECT COUNT(*) FROM opportunities WHERE moderation_status != 'approved'").Scan(&stats.PendingModeration)
+	h.Pool.QueryRow(ctx, `SELECT COUNT(*) FROM opportunities WHERE moderation_status = 'pending' OR (revision_moderation_status = 'pending' AND pending_revision IS NOT NULL)`).Scan(&stats.PendingModeration)
 
 	format := r.URL.Query().Get("format")
 	if format == "csv" {

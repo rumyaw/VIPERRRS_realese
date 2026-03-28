@@ -18,6 +18,7 @@ import { addServerFavorite, removeServerFavorite } from "@/lib/api";
 import { useToast } from "@/hooks/useToast";
 import { ShareMenu } from "@/components/opportunities/ShareMenu";
 import { cardActionPrimary, cardActionSecondary } from "@/lib/card-actions";
+import { navLinkButtonClass } from "@/lib/nav-link-styles";
 
 const YandexMap = dynamic(
   () => import("@/components/map/YandexMap").then((m) => m.YandexMap),
@@ -83,7 +84,7 @@ export default function OpportunityPage() {
     return (
       <GlassPanel className="p-8 text-center">
         <p className="text-[var(--text-primary)]">Возможность не найдена.</p>
-        <Link href="/" className="mt-4 inline-block text-[var(--brand-cyan)] hover:underline">
+        <Link href="/" className={`${navLinkButtonClass} mt-4 inline-flex`}>
           На главную
         </Link>
       </GlassPanel>
@@ -224,30 +225,29 @@ export default function OpportunityPage() {
 
             <div className="flex flex-col gap-2 border-t border-[var(--glass-border)] pt-6">
               <div className="grid grid-cols-1 gap-2 min-[400px]:grid-cols-2">
-                <button
-                  type="button"
-                  onClick={() => {
-                    if (!user) {
-                      showToast("Войдите или зарегистрируйтесь, чтобы добавить в избранное", "info");
-                      return;
-                    }
-                    toggle(opp.id);
-                    if (user.role === "applicant") {
-                      if (has(opp.id)) {
-                        removeServerFavorite(opp.id).catch(() => {});
-                      } else {
-                        addServerFavorite(opp.id).catch(() => {});
+                {user && user.role !== "curator" ? (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const wasFav = has(opp.id);
+                      toggle(opp.id);
+                      if (user.role === "applicant") {
+                        if (wasFav) {
+                          removeServerFavorite(opp.id).catch(() => {});
+                        } else {
+                          addServerFavorite(opp.id).catch(() => {});
+                        }
                       }
-                    }
-                  }}
-                  className={cn(
-                    cardActionSecondary,
-                    "font-semibold",
-                    has(opp.id) && "border-[color-mix(in_srgb,var(--brand-orange)_45%,var(--glass-border))] text-[var(--brand-orange)]",
-                  )}
-                >
-                  {has(opp.id) ? "★ В избранном" : "☆ Добавить в избранное"}
-                </button>
+                    }}
+                    className={cn(
+                      cardActionSecondary,
+                      "font-semibold",
+                      has(opp.id) && "border-[color-mix(in_srgb,var(--brand-orange)_45%,var(--glass-border))] text-[var(--brand-orange)]",
+                    )}
+                  >
+                    {has(opp.id) ? "★ В избранном" : "☆ Добавить в избранное"}
+                  </button>
+                ) : null}
                 {!user ? (
                   <Link href="/login" className={cardActionPrimary}>
                     Войти, чтобы откликнуться

@@ -29,6 +29,8 @@ export default function HomePage() {
   const [format, setFormat] = useState<WorkFormat | "">("");
   const [city, setCity] = useState("");
   const [typeFilter, setTypeFilter] = useState("");
+  const [salaryFrom, setSalaryFrom] = useState("");
+  const [salaryTo, setSalaryTo] = useState("");
   const [view, setView] = useState<"map" | "list">("map");
   const [popupId, setPopupId] = useState<string | null>(null);
   const [opportunities, setOpportunities] = useState<Opportunity[]>([]);
@@ -116,21 +118,37 @@ export default function HomePage() {
   );
 
   const favoriteOpps = useMemo(() => {
+    if (!user) return [];
     return opportunities.filter((o) => has(o.id));
-  }, [opportunities, favoriteIds]);
+  }, [opportunities, user, has, favoriteIds]);
+
+  const salaryFromNum = salaryFrom.trim() === "" ? null : parseInt(salaryFrom.replace(/\s/g, ""), 10);
+  const salaryToNum = salaryTo.trim() === "" ? null : parseInt(salaryTo.replace(/\s/g, ""), 10);
 
   const filtered = useMemo(() => {
+    const fMin = salaryFromNum != null && !Number.isNaN(salaryFromNum) ? salaryFromNum : null;
+    const fMax = salaryToNum != null && !Number.isNaN(salaryToNum) ? salaryToNum : null;
+    const salaryFilterActive = fMin != null || fMax != null;
+
     return opportunities.filter((o) => {
-      if (has(o.id)) return false;
+      if (user && has(o.id)) return false;
       const hay = `${o.title} ${o.companyName} ${o.tags.join(" ")}`.toLowerCase();
       if (q && !hay.includes(q.toLowerCase())) return false;
       if (tag && !o.tags.includes(tag)) return false;
       if (format && o.workFormat !== format) return false;
       if (city && !o.locationLabel.startsWith(city)) return false;
       if (typeFilter && o.type !== typeFilter) return false;
+      if (salaryFilterActive) {
+        if (o.salaryMin == null || o.salaryMax == null) return false;
+        const oMin = o.salaryMin;
+        const oMax = o.salaryMax;
+        const wantMin = fMin ?? 0;
+        const wantMax = fMax ?? Number.MAX_SAFE_INTEGER;
+        if (oMax < wantMin || oMin > wantMax) return false;
+      }
       return true;
     });
-  }, [q, tag, format, city, typeFilter, opportunities, favoriteIds]);
+  }, [q, tag, format, city, typeFilter, salaryFromNum, salaryToNum, opportunities, user, has, favoriteIds]);
 
   const popupOpp = useMemo(() => {
     if (!popupId) return null;
@@ -164,8 +182,8 @@ export default function HomePage() {
           transition={{ delay: 0.15 }}
           className="mx-auto mt-4 max-w-2xl text-[var(--text-secondary)]"
         >
-          Вакансии, стажировки, менторство и карьерные события — на карте и в ленте. Избранное из
-          главной сохраняется в браузере; на карте такие точки подсвечиваются оранжевым маркером.
+          Вакансии, стажировки, менторство и карьерные события — на карте и в ленте. Избранное доступно
+          после входа; на карте избранные точки подсвечиваются оранжевым маркером.
         </motion.p>
         {!user && (
           <motion.div
@@ -184,7 +202,7 @@ export default function HomePage() {
         )}
       </section>
 
-      <GlassPanel className="p-4 sm:p-6">
+      <GlassPanel className="relative z-20 p-4 sm:p-6">
         <div className="flex flex-col gap-5">
           <div className="space-y-2">
             <label className="text-xs font-medium text-[var(--text-secondary)]">Поиск</label>
@@ -196,7 +214,7 @@ export default function HomePage() {
             />
           </div>
 
-          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
             <div className="min-w-0 space-y-2">
               <label className="text-xs font-medium text-[var(--text-secondary)]" htmlFor="filter-tag">
                 Тег / стек
@@ -249,6 +267,29 @@ export default function HomePage() {
                 buttonClassName="px-4 py-3 text-sm outline-none"
               />
             </div>
+            <div className="min-w-0 space-y-2 sm:col-span-2 xl:col-span-2">
+              <span className="block text-xs font-medium text-[var(--text-secondary)]">Зарплата, ₽</span>
+              <div className="flex gap-2">
+                <input
+                  id="filter-salary-from"
+                  type="number"
+                  inputMode="numeric"
+                  className="glass-input input-no-spinner min-h-[48px] min-w-0 flex-1 px-4 py-3 text-sm outline-none ring-[var(--brand-orange)] focus:ring-2"
+                  placeholder="От"
+                  value={salaryFrom}
+                  onChange={(e) => setSalaryFrom(e.target.value)}
+                />
+                <input
+                  id="filter-salary-to"
+                  type="number"
+                  inputMode="numeric"
+                  className="glass-input input-no-spinner min-h-[48px] min-w-0 flex-1 px-4 py-3 text-sm outline-none ring-[var(--brand-orange)] focus:ring-2"
+                  placeholder="До"
+                  value={salaryTo}
+                  onChange={(e) => setSalaryTo(e.target.value)}
+                />
+              </div>
+            </div>
           </div>
 
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
@@ -291,11 +332,11 @@ export default function HomePage() {
         <motion.div
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
-          className="glass-panel overflow-hidden p-1 sm:p-2"
+          className="glass-panel relative z-0 isolate overflow-hidden p-1 sm:p-2"
         >
           <YandexMap
             opportunities={filtered}
-            favoriteIds={favoriteIds}
+            favoriteIds={user ? favoriteIds : []}
             onMarkerClick={(id) => setPopupId(id)}
             className="h-[min(48dvh,420px)] w-full rounded-xl sm:h-[min(58dvh,520px)] md:h-[min(62vh,560px)]"
           />
@@ -322,7 +363,9 @@ export default function HomePage() {
                       <OpportunityCard
                         opp={opp}
                         favorite
-                        onToggleFavorite={user?.role !== "curator" ? () => handleToggleFavorite(opp.id) : undefined}
+                        onToggleFavorite={
+                          user && user.role !== "curator" ? () => handleToggleFavorite(opp.id) : undefined
+                        }
                         onRecommend={user?.role === "applicant" ? opp.id : undefined}
                       />
                     </div>
@@ -338,8 +381,10 @@ export default function HomePage() {
               <div key={opp.id} className="h-full">
                 <OpportunityCard
                   opp={opp}
-                  favorite={has(opp.id)}
-                  onToggleFavorite={user?.role !== "curator" ? () => handleToggleFavorite(opp.id) : undefined}
+                  favorite={!!user && has(opp.id)}
+                  onToggleFavorite={
+                    user && user.role !== "curator" ? () => handleToggleFavorite(opp.id) : undefined
+                  }
                   onRecommend={user?.role === "applicant" ? opp.id : undefined}
                 />
               </div>
@@ -377,8 +422,10 @@ export default function HomePage() {
             <OpportunityCard
               opp={popupOpp}
               compact
-              favorite={has(popupOpp.id)}
-              onToggleFavorite={user && user.role !== "curator" ? () => handleToggleFavorite(popupOpp.id) : undefined}
+              favorite={!!user && has(popupOpp.id)}
+              onToggleFavorite={
+                user && user.role !== "curator" ? () => handleToggleFavorite(popupOpp.id) : undefined
+              }
               onRecommend={user?.role === "applicant" ? popupOpp.id : undefined}
             />
           </motion.div>
