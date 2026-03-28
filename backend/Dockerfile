@@ -1,4 +1,4 @@
-FROM golang:1.23-alpine AS builder
+FROM golang:1.26.1-alpine3.23 AS builder
 
 WORKDIR /app
 
@@ -10,7 +10,7 @@ COPY . .
 # что даёт SIGSEGV в netpoll при DNS/PostgreSQL. Сборка под архитектуру образа (BuildKit).
 RUN CGO_ENABLED=0 GOOS=linux go build -o /out/tramplin-api ./cmd/api
 
-FROM alpine:3.20
+FROM alpine:3.23
 
 # wget нужен для healthcheck в docker-compose (в базовом Alpine его нет)
 RUN apk add --no-cache wget
