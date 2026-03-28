@@ -2,14 +2,6 @@
 
 <img src="frontend/public/images/logo.png" alt="Трамплин — логотип проекта" width="200" />
 
-<br />
-
-<sub><em>Проект представлен на конкурсе Международной олимпиады <strong>«IT-Планета 2026»</strong> в направлении <strong>Прикладное программирование if…else</strong></em></sub>
-
-<br /><br />
-
-<img src="docs/readme/logo_team.png" alt="Команда VIPERRRS" width="280" />
-
 # Трамплин
 
 **Карьерная экосистема для студентов, выпускников и работодателей**
