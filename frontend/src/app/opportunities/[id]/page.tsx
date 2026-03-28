@@ -4,6 +4,8 @@ import { motion } from "framer-motion";
 import dynamic from "next/dynamic";
 import Link from "next/link";
 import { useParams } from "next/navigation";
+import { Suspense } from "react";
+import { OpportunityBackNav } from "./OpportunityBackNav";
 import { useEffect, useState } from "react";
 import { useAuth } from "@/contexts/auth-context";
 import { GlassPanel } from "@/components/ui/GlassPanel";
@@ -104,11 +106,15 @@ export default function OpportunityPage() {
 
   return (
     <div className="space-y-4 pb-[max(0.5rem,env(safe-area-inset-bottom))] sm:space-y-6">
-      <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }}>
-        <Link href="/" className="text-sm text-[var(--text-secondary)] hover:text-[var(--text-primary)]">
-          ← Назад к поиску
-        </Link>
-      </motion.div>
+      <Suspense
+        fallback={
+          <div className="text-sm text-[var(--text-secondary)]">
+            <Link href="/">← Назад к поиску</Link>
+          </div>
+        }
+      >
+        <OpportunityBackNav />
+      </Suspense>
 
       <div className="grid gap-4 min-[700px]:gap-6 lg:grid-cols-[1.05fr_0.95fr]">
         <GlassPanel className="overflow-visible p-0">

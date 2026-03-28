@@ -1,15 +1,30 @@
 "use client";
 
-import {
-  Chart as ChartJS,
-  ArcElement,
-  Tooltip,
-  Legend,
-} from "chart.js";
+import { Chart as ChartJS, ArcElement, Tooltip, Legend } from "chart.js";
+import type { ChartOptions } from "chart.js";
 import { Doughnut } from "react-chartjs-2";
 import type { AdminStats } from "@/lib/api";
 
 ChartJS.register(ArcElement, Tooltip, Legend);
+
+const options: ChartOptions<"doughnut"> = {
+  responsive: true,
+  maintainAspectRatio: false,
+  layout: {
+    padding: { left: 4, right: 4, top: 4, bottom: 8 },
+  },
+  plugins: {
+    legend: {
+      position: "bottom",
+      labels: {
+        color: "#64748b",
+        boxWidth: 10,
+        padding: 10,
+        font: { size: 10 },
+      },
+    },
+  },
+};
 
 export default function DoughnutChart({ stats }: { stats: AdminStats }) {
   const data = {
@@ -32,16 +47,9 @@ export default function DoughnutChart({ stats }: { stats: AdminStats }) {
     ],
   };
 
-  const options = {
-    responsive: true,
-    maintainAspectRatio: false,
-    plugins: {
-      legend: {
-        position: "bottom" as const,
-        labels: { color: "#64748b" },
-      },
-    },
-  };
-
-  return <Doughnut data={data} options={options} height={200} />;
+  return (
+    <div className="relative mx-auto h-full w-full min-w-0 max-w-full">
+      <Doughnut data={data} options={options} />
+    </div>
+  );
 }

@@ -6,7 +6,8 @@ import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { useAuth } from "@/contexts/auth-context";
 import { GlassPanel } from "@/components/ui/GlassPanel";
-import { fetchEmployerOpportunities } from "@/lib/api";
+import { fetchEmployerOpportunities, deleteEmployerOpportunity } from "@/lib/api";
+import { useToast } from "@/hooks/useToast";
 import type { Opportunity } from "@/lib/types";
 import { cn } from "@/lib/cn";
 import { moderationStatusBadge } from "@/lib/status-badges";
@@ -16,8 +17,10 @@ import { PlusSignIcon, Location01Icon, Briefcase01Icon, Calendar01Icon } from "@
 export default function EmployerOpportunitiesPage() {
   const { user } = useAuth();
   const router = useRouter();
+  const { showToast } = useToast();
   const [opportunities, setOpportunities] = useState<Opportunity[]>([]);
   const [loading, setLoading] = useState(true);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
 
   useEffect(() => {
     if (!user || user.role !== "employer") {
@@ -56,6 +59,29 @@ export default function EmployerOpportunitiesPage() {
     if (st === "approved") return "Опубликовано";
     if (st === "rejected") return "Отклонено";
     return "На модерации";
+  };
+
+  const eventDatesLine = (opp: Opportunity) => {
+    if (opp.eventDate && opp.validUntil) {
+      return `${new Date(opp.eventDate).toLocaleDateString("ru-RU")} — ${new Date(opp.validUntil).toLocaleDateString("ru-RU")}`;
+    }
+    if (opp.eventDate) return new Date(opp.eventDate).toLocaleDateString("ru-RU");
+    if (opp.validUntil) return new Date(opp.validUntil).toLocaleDateString("ru-RU");
+    return "Даты уточняются";
+  };
+
+  const handleDelete = async (opp: Opportunity) => {
+    if (!window.confirm(`Удалить карточку «${opp.title}»? Это действие нельзя отменить.`)) return;
+    setDeletingId(opp.id);
+    try {
+      await deleteEmployerOpportunity(opp.id);
+      setOpportunities((prev) => prev.filter((o) => o.id !== opp.id));
+      showToast("Карточка удалена", "success");
+    } catch {
+      showToast("Не удалось удалить карточку", "error");
+    } finally {
+      setDeletingId(null);
+    }
   };
 
   return (
@@ -150,10 +176,15 @@ export default function EmployerOpportunitiesPage() {
                     <HugeiconsIcon icon={Calendar01Icon} size={12} />
                     {opp.publishedAt ? new Date(opp.publishedAt).toLocaleDateString("ru-RU") : "Новая"}
                   </span>
-                  {opp.salaryMin && opp.salaryMax && (
-                    <span className="text-[var(--brand-orange)]">
-                      {opp.salaryMin.toLocaleString("ru-RU")} – {opp.salaryMax.toLocaleString("ru-RU")} ₽
-                    </span>
+                  {opp.type === "event" ? (
+                    <span className="font-medium text-[var(--text-primary)]">Проведение: {eventDatesLine(opp)}</span>
+                  ) : (
+                    opp.salaryMin != null &&
+                    opp.salaryMax != null && (
+                      <span className="text-[var(--brand-orange)]">
+                        {opp.salaryMin.toLocaleString("ru-RU")} – {opp.salaryMax.toLocaleString("ru-RU")} ₽
+                      </span>
+                    )
                   )}
                 </div>
 
@@ -180,6 +211,14 @@ export default function EmployerOpportunitiesPage() {
                   >
                     Отклики
                   </Link>
+                  <button
+                    type="button"
+                    disabled={deletingId === opp.id}
+                    onClick={() => void handleDelete(opp)}
+                    className="btn-danger-soft rounded-lg px-3 py-1.5 text-xs font-semibold transition disabled:opacity-50"
+                  >
+                    {deletingId === opp.id ? "…" : "Удалить"}
+                  </button>
                 </div>
               </GlassPanel>
             </motion.div>

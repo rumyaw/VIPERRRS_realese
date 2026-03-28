@@ -2,15 +2,25 @@
 
 import { motion } from "framer-motion";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
+import { Suspense, useMemo, useState } from "react";
 import { Eye, EyeOff } from "lucide-react";
 import { useAuth } from "@/contexts/auth-context";
 import { GlassPanel } from "@/components/ui/GlassPanel";
 
-export default function LoginPage() {
+function safeInternalPath(next: string | null): string {
+  if (!next || !next.startsWith("/") || next.startsWith("//")) return "/dashboard";
+  return next;
+}
+
+function LoginForm() {
   const { login } = useAuth();
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const redirectAfter = useMemo(
+    () => safeInternalPath(searchParams.get("next")),
+    [searchParams],
+  );
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
@@ -23,7 +33,7 @@ export default function LoginPage() {
     setError(null);
     const res = await login(email, password);
     setLoading(false);
-    if (res.ok) router.push("/dashboard");
+    if (res.ok) router.push(redirectAfter);
     else setError(res.error ?? "Ошибка входа");
   }
 
@@ -61,7 +71,7 @@ export default function LoginPage() {
               <button
                 type="button"
                 onClick={() => setShowPassword((v) => !v)}
-                className="absolute right-3 top-1/2 -translate-y-1/2 text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition"
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-[var(--text-secondary)] transition hover:text-[var(--text-primary)]"
                 aria-label={showPassword ? "Скрыть пароль" : "Показать пароль"}
               >
                 {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
@@ -69,7 +79,7 @@ export default function LoginPage() {
             </div>
           </div>
           {error && (
-            <p className="rounded-xl border-2 border-red-800/40 bg-red-100 px-3 py-2 text-sm font-semibold !text-black dark:border-red-500/40 dark:bg-red-500/15 dark:!text-red-100">
+            <p className="auth-form-error-light rounded-xl border-2 border-red-800/40 bg-red-100 px-3 py-2 text-sm font-semibold dark:border-red-500/40 dark:bg-red-500/15 dark:!text-red-100">
               {error}
             </p>
           )}
@@ -89,5 +99,21 @@ export default function LoginPage() {
         </p>
       </GlassPanel>
     </motion.div>
+  );
+}
+
+export default function LoginPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="mx-auto max-w-md">
+          <GlassPanel className="flex h-48 items-center justify-center p-6">
+            <div className="h-8 w-8 animate-spin rounded-full border-2 border-[var(--brand-cyan)] border-t-transparent" />
+          </GlassPanel>
+        </div>
+      }
+    >
+      <LoginForm />
+    </Suspense>
   );
 }

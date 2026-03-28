@@ -16,6 +16,7 @@ import {
 import { cn } from "@/lib/cn";
 import { useToast } from "@/hooks/useToast";
 import { moderationStatusBadge, moderationIconButton } from "@/lib/status-badges";
+import { GlassSelect } from "@/components/ui/GlassSelect";
 import { HugeiconsIcon } from "@hugeicons/react";
 import { Delete01Icon, CheckmarkCircle01Icon, Cancel01Icon, Download01Icon } from "@hugeicons/core-free-icons";
 
@@ -120,16 +121,21 @@ export default function AdminOpportunitiesPage() {
       </div>
 
       <GlassPanel className="flex flex-wrap items-center gap-3 p-4">
-        <select
+        <GlassSelect
           value={statusFilter}
-          onChange={(e) => { setStatusFilter(e.target.value); setPage(1); }}
-          className="glass-select px-4 py-2 text-sm"
-        >
-          <option value="">Все статусы</option>
-          <option value="pending">На модерации</option>
-          <option value="approved">Одобрены</option>
-          <option value="rejected">Отклонены</option>
-        </select>
+          onChange={(v) => {
+            setStatusFilter(v);
+            setPage(1);
+          }}
+          options={[
+            { value: "", label: "Все статусы" },
+            { value: "pending", label: "На модерации" },
+            { value: "approved", label: "Одобрены" },
+            { value: "rejected", label: "Отклонены" },
+          ]}
+          className="w-full min-w-0 sm:w-56"
+          buttonClassName="px-4 py-2 text-sm"
+        />
       </GlassPanel>
 
       {loading ? (

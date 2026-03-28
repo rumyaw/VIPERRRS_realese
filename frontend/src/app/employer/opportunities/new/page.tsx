@@ -12,6 +12,7 @@ import type { Opportunity, OpportunityType, WorkFormat } from "@/lib/types";
 import { cn } from "@/lib/cn";
 import { useToast } from "@/hooks/useToast";
 import { SkillPicker } from "@/components/ui/SkillPicker";
+import { GlassSelect } from "@/components/ui/GlassSelect";
 
 const noSalaryTypes: OpportunityType[] = ["event", "mentorship"];
 
@@ -219,29 +220,33 @@ export default function CreateOpportunityPage() {
             <div className="grid gap-4 sm:grid-cols-2">
               <div>
                 <label className="text-sm font-medium text-[var(--text-secondary)]">Тип</label>
-                <select
-                  className="glass-select mt-1 w-full px-4 py-3 text-sm"
+                <GlassSelect
+                  className="mt-1 w-full"
+                  buttonClassName="px-4 py-3 text-sm"
                   value={form.type}
-                  onChange={(e) => setForm(f => ({ ...f, type: e.target.value as OpportunityType }))}
-                >
-                  <option value="internship">Стажировка</option>
-                  <option value="vacancy_junior">Вакансия Junior</option>
-                  <option value="vacancy_senior">Вакансия Middle+</option>
-                  <option value="mentorship">Менторская программа</option>
-                  <option value="event">Мероприятие</option>
-                </select>
+                  onChange={(v) => setForm((f) => ({ ...f, type: v as OpportunityType }))}
+                  options={[
+                    { value: "internship", label: "Стажировка" },
+                    { value: "vacancy_junior", label: "Вакансия Junior" },
+                    { value: "vacancy_senior", label: "Вакансия Middle+" },
+                    { value: "mentorship", label: "Менторская программа" },
+                    { value: "event", label: "Мероприятие" },
+                  ]}
+                />
               </div>
               <div>
                 <label className="text-sm font-medium text-[var(--text-secondary)]">Формат</label>
-                <select
-                  className="glass-select mt-1 w-full px-4 py-3 text-sm"
+                <GlassSelect
+                  className="mt-1 w-full"
+                  buttonClassName="px-4 py-3 text-sm"
                   value={form.workFormat}
-                  onChange={(e) => setForm(f => ({ ...f, workFormat: e.target.value as WorkFormat }))}
-                >
-                  <option value="office">Офис</option>
-                  <option value="hybrid">Гибрид</option>
-                  <option value="remote">Удалённо</option>
-                </select>
+                  onChange={(v) => setForm((f) => ({ ...f, workFormat: v as WorkFormat }))}
+                  options={[
+                    { value: "office", label: "Офис" },
+                    { value: "hybrid", label: "Гибрид" },
+                    { value: "remote", label: "Удалённо" },
+                  ]}
+                />
               </div>
             </div>
 

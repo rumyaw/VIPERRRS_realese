@@ -1,5 +1,9 @@
 @import "tailwindcss";
 
+/* Как у ThemeProvider: только класс .dark на <html>, не prefers-color-scheme.
+   Иначе при «светлой» теме приложения и тёмной ОС включаются dark:text-* на пастельных фонах. */
+@custom-variant dark (&:where(.dark, .dark *));
+
 @font-face {
   font-family: 'Chetty';
   src: url('/fonts/CHETTY.ttf') format('truetype');
@@ -23,6 +27,9 @@
   --glass-blur: 18px;
   --text-primary: #2d1a0e;
   --text-secondary: rgba(45, 26, 14, 0.68);
+  /* Текст бейджей / вторичных кнопок в светлой теме (непрозрачный для контраста) */
+  --status-ink-light: #2d1a0e;
+  --control-ink-strong: #1a0f08;
   --page-bg: #FDF8F0;
   --bg-card: #F1E3C6;
   --gradient-text: linear-gradient(90deg, #C65D3B, #F1E3C6);
@@ -143,9 +150,8 @@ input.input-no-spinner[type="number"] {
 }
 
 /*
- * Native <option> styling is limited cross-browser (Firefox supports background/color,
- * Chrome/Safari largely ignore it). For fully consistent styling, consider replacing
- * <select> with a custom headless-UI select component (e.g. Radix, Headless UI).
+ * Нативный <select>: выпадающая панель на мобильных часто шире поля (по длине option).
+ * Для фильтров и форм используйте @/components/ui/GlassSelect.
  */
 .glass-select option {
   padding: 8px 12px;
@@ -297,21 +303,138 @@ input.input-no-spinner[type="number"] {
 }
 
 /*
- * Статусы откликов / модерации: в светлой теме фиксируем тёмный текст с !important,
- * чтобы перебить наследование от body и гарантировать читаемость в Docker/production-сборке.
- * В тёмной теме правило не применяется — остаются классы Tailwind (dark:…).
+ * Статусы откликов / модерации: светлая тема — единый тёмный цвет чернил (--status-ink-light).
  */
 :root:not(.dark) .status-badge-pill {
-  color: #141414 !important;
-  -webkit-text-fill-color: #141414;
+  color: var(--status-ink-light) !important;
+  -webkit-text-fill-color: var(--status-ink-light) !important;
 }
 
+/* SVG: явный цвет — иначе в WebKit currentColor от текста не доходит до иконок (Lucide / Hugeicons). */
 :root:not(.dark) .status-badge-pill svg {
-  color: inherit !important;
+  color: var(--status-ink-light) !important;
 }
 
-/* Плашки «тип / формат» на карточках: в светлой теме не приглушать до secondary */
-:root:not(.dark) .card-meta-chip {
-  color: var(--text-primary) !important;
-  -webkit-text-fill-color: var(--text-primary);
+:root:not(.dark) .status-badge-pill svg path,
+:root:not(.dark) .status-badge-pill svg circle,
+:root:not(.dark) .status-badge-pill svg ellipse,
+:root:not(.dark) .status-badge-pill svg line,
+:root:not(.dark) .status-badge-pill svg polyline,
+:root:not(.dark) .status-badge-pill svg polygon,
+:root:not(.dark) .status-badge-pill svg rect {
+  stroke: var(--status-ink-light) !important;
 }
+
+:root:not(.dark) .status-badge-pill svg path[fill="none"],
+:root:not(.dark) .status-badge-pill svg circle[fill="none"] {
+  fill: none !important;
+}
+
+:root:not(.dark) .status-badge-pill svg path[fill]:not([fill="none"]):not([fill="transparent"]),
+:root:not(.dark) .status-badge-pill svg circle[fill]:not([fill="none"]):not([fill="transparent"]) {
+  fill: var(--status-ink-light) !important;
+}
+
+/* Кнопки «Принять / Отклонить / Резерв» и аналоги в светлой теме */
+:root:not(.dark) .application-action-btn {
+  color: var(--status-ink-light) !important;
+  -webkit-text-fill-color: var(--status-ink-light) !important;
+}
+
+:root:not(.dark) .application-action-btn svg {
+  color: var(--status-ink-light) !important;
+}
+
+:root:not(.dark) .application-action-btn svg path,
+:root:not(.dark) .application-action-btn svg circle,
+:root:not(.dark) .application-action-btn svg ellipse,
+:root:not(.dark) .application-action-btn svg line,
+:root:not(.dark) .application-action-btn svg polyline,
+:root:not(.dark) .application-action-btn svg polygon,
+:root:not(.dark) .application-action-btn svg rect {
+  stroke: var(--status-ink-light) !important;
+}
+
+:root:not(.dark) .application-action-btn svg path[fill="none"],
+:root:not(.dark) .application-action-btn svg circle[fill="none"] {
+  fill: none !important;
+}
+
+:root:not(.dark) .application-action-btn svg path[fill]:not([fill="none"]):not([fill="transparent"]),
+:root:not(.dark) .application-action-btn svg circle[fill]:not([fill="none"]):not([fill="transparent"]) {
+  fill: var(--status-ink-light) !important;
+}
+
+/* Плашки «тип / формат» на карточках */
+:root:not(.dark) .card-meta-chip {
+  color: var(--status-ink-light) !important;
+  -webkit-text-fill-color: var(--status-ink-light);
+}
+
+/* Ошибка формы входа (светлая тема) */
+:root:not(.dark) .auth-form-error-light {
+  color: var(--status-ink-light) !important;
+  -webkit-text-fill-color: var(--status-ink-light);
+}
+
+.dark .auth-form-error-light {
+  -webkit-text-fill-color: unset;
+}
+
+.dark .application-action-btn {
+  -webkit-text-fill-color: unset;
+}
+
+/* «Удалить» и прочие деструктивные кнопки на пастельном фоне — светлая тема */
+:root:not(.dark) .btn-danger-soft {
+  color: var(--control-ink-strong) !important;
+  background-color: #fecaca !important;
+  border: 2px solid rgba(127, 29, 29, 0.5) !important;
+  box-shadow: 0 1px 0 rgba(255, 255, 255, 0.35) inset;
+}
+
+:root:not(.dark) .btn-danger-soft:hover:not(:disabled) {
+  background-color: #fca5a5 !important;
+}
+
+.dark .btn-danger-soft {
+  color: rgb(254 202 202) !important;
+  background-color: rgb(69 10 10 / 0.55) !important;
+  border: 1px solid rgb(248 113 113 / 0.35) !important;
+  box-shadow: none;
+}
+
+.dark .btn-danger-soft:hover:not(:disabled) {
+  background-color: rgb(127 29 29 / 0.5) !important;
+}
+
+/* Иконки модерации в админке: светлая тема — пастель + тёмный контур иконки */
+:root:not(.dark) .moderation-icon-pill {
+  color: var(--control-ink-strong) !important;
+  -webkit-text-fill-color: var(--control-ink-strong) !important;
+}
+
+:root:not(.dark) .moderation-icon-pill svg {
+  color: var(--control-ink-strong) !important;
+}
+
+:root:not(.dark) .moderation-icon-pill svg path,
+:root:not(.dark) .moderation-icon-pill svg circle,
+:root:not(.dark) .moderation-icon-pill svg ellipse,
+:root:not(.dark) .moderation-icon-pill svg line,
+:root:not(.dark) .moderation-icon-pill svg polyline,
+:root:not(.dark) .moderation-icon-pill svg polygon,
+:root:not(.dark) .moderation-icon-pill svg rect {
+  stroke: var(--control-ink-strong) !important;
+}
+
+:root:not(.dark) .moderation-icon-pill svg path[fill="none"],
+:root:not(.dark) .moderation-icon-pill svg circle[fill="none"] {
+  fill: none !important;
+}
+
+:root:not(.dark) .moderation-icon-pill svg path[fill]:not([fill="none"]):not([fill="transparent"]),
+:root:not(.dark) .moderation-icon-pill svg circle[fill]:not([fill="none"]):not([fill="transparent"]) {
+  fill: var(--control-ink-strong) !important;
+}
+

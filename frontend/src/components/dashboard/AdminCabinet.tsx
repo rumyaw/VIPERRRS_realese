@@ -118,7 +118,7 @@ export function AdminCabinet() {
               <div className="flex flex-wrap gap-2">
                 <button
                   type="button"
-                  className="rounded-xl bg-emerald-500/20 px-4 py-2 text-sm text-emerald-100"
+                  className="rounded-xl border-2 border-emerald-800/50 bg-emerald-200 px-4 py-2 text-sm font-semibold text-[var(--control-ink-strong)] transition hover:bg-emerald-300/90 dark:border-transparent dark:bg-emerald-500/20 dark:text-emerald-100 dark:hover:bg-emerald-500/30"
                   onClick={() => {
                     void (async () => {
                       try {
@@ -141,7 +141,7 @@ export function AdminCabinet() {
                 </button>
                 <button
                   type="button"
-                  className="rounded-xl bg-red-500/15 px-4 py-2 text-sm text-red-100"
+                  className="btn-danger-soft rounded-xl px-4 py-2 text-sm font-semibold"
                   onClick={() => {
                     void (async () => {
                       try {
@@ -175,7 +175,9 @@ export function AdminCabinet() {
         {items.length === 0 && (
           <p className="text-center text-sm text-[var(--text-secondary)]">Очередь пуста.</p>
         )}
-        {apiError && <p className="text-center text-xs text-red-300">{apiError}</p>}
+        {apiError && (
+          <p className="text-center text-xs font-medium text-red-900 dark:text-red-300">{apiError}</p>
+        )}
       </div>
     </div>
   );

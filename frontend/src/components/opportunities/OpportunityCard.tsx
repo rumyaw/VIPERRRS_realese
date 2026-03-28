@@ -36,7 +36,16 @@ export function OpportunityCard({
   onRecommend?: string;
 }) {
   const isEvent = opp.type === "event";
-  const showSalaryRow = !isEvent || (opp.salaryMin != null && opp.salaryMax != null);
+
+  const eventDatesText = (() => {
+    if (!isEvent) return "";
+    if (opp.eventDate && opp.validUntil) {
+      return `Проведение: ${new Date(opp.eventDate).toLocaleDateString("ru-RU")} — ${new Date(opp.validUntil).toLocaleDateString("ru-RU")}`;
+    }
+    if (opp.eventDate) return `Дата: ${new Date(opp.eventDate).toLocaleString("ru-RU")}`;
+    if (opp.validUntil) return `До: ${new Date(opp.validUntil).toLocaleDateString("ru-RU")}`;
+    return "Даты уточняются";
+  })();
 
   return (
     <motion.div
@@ -86,21 +95,21 @@ export function OpportunityCard({
             </span>
           ))}
         </div>
-        {showSalaryRow && (
+        {isEvent ? (
+          <div className="mt-3 flex flex-wrap items-start justify-between gap-2 border-t border-[var(--glass-border)] pt-3 text-sm text-[var(--text-secondary)] sm:mt-4 sm:pt-4">
+            <span className="min-w-0 flex-1 break-words">{opp.locationLabel}</span>
+            <span className="shrink-0 text-right font-medium text-[var(--text-primary)]">{eventDatesText}</span>
+          </div>
+        ) : (
           <div className="mt-3 flex flex-wrap items-start justify-between gap-2 border-t border-[var(--glass-border)] pt-3 text-sm text-[var(--text-secondary)] sm:mt-4 sm:pt-4">
             <span className="min-w-0 flex-1 break-words">{opp.locationLabel}</span>
             {opp.salaryMin != null && opp.salaryMax != null ? (
               <span className="shrink-0 font-medium text-[var(--text-primary)]">
                 {opp.salaryMin.toLocaleString("ru-RU")}–{opp.salaryMax.toLocaleString("ru-RU")} {opp.currency}
               </span>
-            ) : !isEvent ? (
+            ) : (
               <span className="shrink-0 text-[var(--text-secondary)]">Зарплата не указана</span>
-            ) : null}
-          </div>
-        )}
-        {!showSalaryRow && (
-          <div className="mt-3 border-t border-[var(--glass-border)] pt-3 text-sm text-[var(--text-secondary)] sm:mt-4 sm:pt-4">
-            <span className="break-words">{opp.locationLabel}</span>
+            )}
           </div>
         )}
 

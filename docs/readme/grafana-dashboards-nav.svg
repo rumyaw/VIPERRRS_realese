@@ -1,0 +1,19 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="720" height="220" viewBox="0 0 720 220">
+  <defs>
+    <linearGradient id="bg2" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#1a1528"/>
+      <stop offset="100%" style="stop-color:#0d1117"/>
+    </linearGradient>
+  </defs>
+  <rect width="720" height="220" rx="12" fill="url(#bg2)"/>
+  <text x="360" y="36" fill="#e6edf3" font-family="system-ui,sans-serif" font-size="15" font-weight="600" text-anchor="middle">45 A<>B@5BL 3@0D8:8 2 Grafana</text>
+  <rect x="40" y="58" width="300" height="88" rx="10" fill="#21262d" stroke="#58a6ff" stroke-width="1.5"/>
+  <text x="190" y="92" fill="#58a6ff" font-family="system-ui,sans-serif" font-size="13" font-weight="600" text-anchor="middle">0H1>@4K ’ «!B0B8AB8:0 ?> A09BC»</text>
+  <text x="190" y="118" fill="#c9d1d9" font-family="system-ui,sans-serif" font-size="12" text-anchor="middle">17>@ ?;0BD>@<K, 40==K5 87 PostgreSQL</text>
+  <text x="190" y="138" fill="#8b949e" font-family="system-ui,sans-serif" font-size="11" text-anchor="middle">(?@>2865==K9 40H1>@4 «"@0<?;8=  17>@ ?;0BD>@<K»)</text>
+  <rect x="380" y="58" width="300" height="88" rx="10" fill="#21262d" stroke="#a371f7" stroke-width="1.5"/>
+  <text x="530" y="88" fill="#a371f7" font-family="system-ui,sans-serif" font-size="13" font-weight="600" text-anchor="middle">Drilldown ’ Metrics</text>
+  <text x="530" y="118" fill="#c9d1d9" font-family="system-ui,sans-serif" font-size="12" text-anchor="middle">5B@8:8 ?>B@51;5=8O @5AC@A>2</text>
+  <text x="530" y="138" fill="#8b949e" font-family="system-ui,sans-serif" font-size="11" text-anchor="middle">(Prometheus / cAdvisor)</text>
+  <text x="360" y="188" fill="#8b949e" font-family="system-ui,sans-serif" font-size="11" text-anchor="middle">0720=8O ?C=:B>2 <5=N <>3CB A;53:0 >B;8G0BLAO 2 7028A8<>AB8 >B 25@A88 Grafana.</text>
+</svg>

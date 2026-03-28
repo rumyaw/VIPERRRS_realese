@@ -194,6 +194,12 @@ export async function fetchEmployerOpportunityById(id: string, signal?: AbortSig
   return toOpportunity((await res.json()) as OpportunityApi);
 }
 
+export async function deleteEmployerOpportunity(opportunityId: string): Promise<void> {
+  await apiFetch<{ ok: boolean }>(`/employer/opportunities/${encodeURIComponent(opportunityId)}`, {
+    method: "DELETE",
+  });
+}
+
 export async function createEmployerOpportunity(input: {
   title: string;
   shortDescription: string;
@@ -470,6 +476,7 @@ export type PublicEmployerProfileApi = {
   description: string;
   industry: string;
   website: string;
+  inn?: string;
   verified: boolean;
   logoUrl?: string;
 };

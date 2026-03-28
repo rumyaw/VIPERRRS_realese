@@ -55,6 +55,7 @@ export function ShareMenu({
   const [contacts, setContacts] = useState<RecommendableContactApi[]>([]);
   const [loadingContacts, setLoadingContacts] = useState(false);
   const [sending, setSending] = useState<string | null>(null);
+  const [recommendMessage, setRecommendMessage] = useState("");
   const [anchor, setAnchor] = useState<Anchor | null>(null);
   const btnRef = useRef<HTMLButtonElement>(null);
   const rootRef = useRef<HTMLDivElement>(null);
@@ -69,13 +70,15 @@ export function ShareMenu({
     const idealLeft = r.left + r.width / 2 - popW / 2;
     const left = Math.min(vw - popW - margin, Math.max(margin, idealLeft));
 
-    const estH = contactsOpen ? Math.min(260, window.innerHeight * 0.45) : 76;
+    const estH = contactsOpen ? Math.min(320, window.innerHeight * 0.5) : 88;
     const spaceAbove = r.top - margin;
-    const preferAbove = spaceAbove >= estH + 12;
+    const spaceBelow = window.innerHeight - r.bottom - margin;
+    /* Попап по умолчанию над кнопкой; вниз — только если сверху совсем мало места */
+    const preferAbove = spaceAbove >= estH + 4 || spaceAbove >= spaceBelow;
 
     if (preferAbove) {
       setAnchor({
-        top: r.top - 8,
+        top: r.top - 12,
         left,
         transform: "translateY(-100%)",
       });
@@ -95,6 +98,7 @@ export function ShareMenu({
       if (t.closest?.("[data-share-popover]")) return;
       setOpen(false);
       setContactsOpen(false);
+      setRecommendMessage("");
     }
     if (open) {
       document.addEventListener("mousedown", handleClick);
@@ -131,7 +135,7 @@ export function ShareMenu({
       await sendRecommendation({
         toUserId: peerId,
         opportunityId,
-        message: "Рекомендую обратить внимание на эту возможность",
+        message: recommendMessage.trim().slice(0, 500),
       });
       showToast("Рекомендация отправлена", "success");
     } catch (e) {
@@ -219,7 +223,7 @@ export function ShareMenu({
               initial={{ opacity: 0, y: 4 }}
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: 4 }}
-              className={`${popoverClass} w-[min(20rem,calc(100vw-1.5rem))] max-h-[min(16rem,45vh)] flex-col overflow-y-auto`}
+              className={`${popoverClass} w-[min(20rem,calc(100vw-1.5rem))] max-h-[min(24rem,58vh)] flex-col overflow-y-auto`}
               style={{
                 top: anchor.top,
                 left: anchor.left,
@@ -237,6 +241,19 @@ export function ShareMenu({
                   ← Назад
                 </button>
               </div>
+
+              <label className="mb-2 block w-full shrink-0 text-left">
+                <span className="mb-1 block text-xs text-[var(--text-secondary)]">
+                  Сообщение к рекомендации (по желанию)
+                </span>
+                <textarea
+                  value={recommendMessage}
+                  onChange={(e) => setRecommendMessage(e.target.value.slice(0, 500))}
+                  placeholder="Например: подойдёт по стеку и формату работы"
+                  rows={2}
+                  className="glass-input w-full resize-none px-3 py-2 text-xs"
+                />
+              </label>
 
               {loadingContacts ? (
                 <div className="flex h-20 w-full items-center justify-center">
@@ -299,9 +316,11 @@ export function ShareMenu({
           if (open) {
             setOpen(false);
             setContactsOpen(false);
+            setRecommendMessage("");
             return;
           }
           setContactsOpen(false);
+          setRecommendMessage("");
           setOpen(true);
           requestAnimationFrame(() => computeAnchor());
         }}

@@ -74,6 +74,7 @@ func NewRouter(
 
 			r.With(mw.RequireRoles("employer")).Get("/employer/opportunities", cabinetH.EmployerOpportunities)
 			r.With(mw.RequireRoles("employer")).Get("/employer/opportunities/{opportunityId}", cabinetH.EmployerGetOpportunity)
+			r.With(mw.RequireRoles("employer")).Delete("/employer/opportunities/{opportunityId}", cabinetH.EmployerDeleteOpportunity)
 			r.With(mw.RequireRoles("employer")).Post("/employer/opportunities", cabinetH.EmployerCreateOpportunity)
 			r.With(mw.RequireRoles("employer")).Get("/employer/applications", cabinetH.EmployerApplications)
 			r.With(mw.RequireRoles("employer")).Patch("/employer/applications/{applicationId}", cabinetH.EmployerUpdateApplicationStatus)
@@ -95,6 +96,8 @@ func NewRouter(
 			r.With(mw.RequireRoles("curator")).Get("/admin/opportunities", adminH.ListAllOpportunities)
 			r.With(mw.RequireRoles("curator")).Delete("/admin/opportunities/{opportunityId}", adminH.DeleteOpportunity)
 			r.With(mw.RequireRoles("curator")).Get("/admin/export", adminH.ExportStats)
+
+			r.With(mw.RequireRoles("curator")).Get("/internal/nginx-grafana-auth", authH.NginxGrafanaAuth)
 		})
 	})
 

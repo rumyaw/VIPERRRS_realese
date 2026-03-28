@@ -2,8 +2,8 @@
 
 import { motion } from "framer-motion";
 import Link from "next/link";
-import { useParams, useRouter } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useParams, useRouter, useSearchParams } from "next/navigation";
+import { useEffect, useState, Suspense } from "react";
 import { useAuth } from "@/contexts/auth-context";
 import { GlassPanel } from "@/components/ui/GlassPanel";
 import { JOB_SEARCH_LABELS } from "@/lib/profile-defaults";
@@ -26,8 +26,9 @@ const statusLabels: Record<string, string> = {
   reserve: "В резерве",
 };
 
-export default function PublicProfilePage() {
+function PublicProfilePageInner() {
   const params = useParams<{ userId: string }>();
+  const searchParams = useSearchParams();
   const { user } = useAuth();
   const router = useRouter();
   const { showToast } = useToast();
@@ -73,12 +74,17 @@ export default function PublicProfilePage() {
     );
   }
 
+  const fromEmployer =
+    user?.role === "employer" || searchParams.get("from") === "employer-applications";
+  const backHref = fromEmployer ? "/employer/applications" : "/applicant/contacts";
+  const backLabel = fromEmployer ? "← К откликам" : "← Назад к контактам";
+
   if (!profile) {
     return (
       <GlassPanel className="mx-auto mt-12 max-w-3xl p-8 text-center">
         <p className="text-[var(--text-primary)]">Профиль не найден.</p>
-        <Link href="/applicant/contacts" className="mt-4 inline-block text-[var(--brand-cyan)] hover:underline">
-          Вернуться к контактам
+        <Link href={backHref} className="mt-4 inline-block text-[var(--brand-cyan)] hover:underline">
+          {fromEmployer ? "К откликам" : "Вернуться к контактам"}
         </Link>
       </GlassPanel>
     );
@@ -86,8 +92,8 @@ export default function PublicProfilePage() {
 
   return (
     <div className="mx-auto max-w-3xl space-y-6">
-      <Link href="/applicant/contacts" className="text-sm text-[var(--text-secondary)] hover:text-[var(--text-primary)]">
-        ← Назад к контактам
+      <Link href={backHref} className="text-sm text-[var(--text-secondary)] hover:text-[var(--text-primary)]">
+        {backLabel}
       </Link>
 
       <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }}>
@@ -116,32 +122,39 @@ export default function PublicProfilePage() {
                 <p className="mt-3 text-sm text-[var(--text-secondary)]">{profile.bio}</p>
               )}
             </div>
-            <div className="flex gap-2">
-              {profile.isContact ? (
-                <span
-                  className={cn(
-                    "flex items-center gap-1 rounded-xl px-4 py-2 text-sm font-medium",
-                    applicationStatusBadge.accepted,
-                  )}
-                >
-                  <HugeiconsIcon icon={CheckmarkCircle01Icon} size={16} />
-                  В контактах
-                </span>
-              ) : requestSent ? (
-                <span className={cn("rounded-xl px-4 py-2 text-sm font-medium", applicationStatusBadge.pending)}>
-                  Заявка отправлена
-                </span>
-              ) : (
-                <button
-                  type="button"
-                  onClick={() => void handleSendRequest()}
-                  className="flex items-center gap-1 rounded-xl bg-[linear-gradient(135deg,var(--brand-magenta),var(--brand-orange))] px-4 py-2 text-sm font-semibold text-white shadow-lg transition hover:opacity-90"
-                >
-                  <HugeiconsIcon icon={UserAdd01Icon} size={16} />
-                  Добавить в контакты
-                </button>
-              )}
-            </div>
+            {user?.role === "applicant" && (
+              <div className="flex gap-2">
+                {profile.isContact ? (
+                  <span
+                    className={cn(
+                      "flex items-center gap-1 rounded-xl px-4 py-2 text-sm font-medium",
+                      applicationStatusBadge.accepted,
+                    )}
+                  >
+                    <HugeiconsIcon icon={CheckmarkCircle01Icon} size={16} />
+                    В контактах
+                  </span>
+                ) : requestSent ? (
+                  <span
+                    className={cn(
+                      "inline-flex min-h-[44px] items-center justify-center rounded-xl px-5 py-2 text-center text-sm font-medium leading-snug",
+                      applicationStatusBadge.pending,
+                    )}
+                  >
+                    Заявка отправлена
+                  </span>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={() => void handleSendRequest()}
+                    className="flex items-center gap-1 rounded-xl bg-[linear-gradient(135deg,var(--brand-magenta),var(--brand-orange))] px-4 py-2 text-sm font-semibold text-white shadow-lg transition hover:opacity-90"
+                  >
+                    <HugeiconsIcon icon={UserAdd01Icon} size={16} />
+                    Добавить в контакты
+                  </button>
+                )}
+              </div>
+            )}
           </div>
         </GlassPanel>
       </motion.div>
@@ -276,5 +289,19 @@ export default function PublicProfilePage() {
         </GlassPanel>
       )}
     </div>
+  );
+}
+
+export default function PublicProfilePage() {
+  return (
+    <Suspense
+      fallback={
+        <GlassPanel className="mx-auto mt-12 flex h-48 max-w-3xl items-center justify-center">
+          <div className="h-8 w-8 animate-spin rounded-full border-2 border-[var(--brand-cyan)] border-t-transparent" />
+        </GlassPanel>
+      }
+    >
+      <PublicProfilePageInner />
+    </Suspense>
   );
 }

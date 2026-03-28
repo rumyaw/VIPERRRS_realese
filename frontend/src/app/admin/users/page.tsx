@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import { useEffect, useState, useCallback } from "react";
 import { useAuth } from "@/contexts/auth-context";
 import { GlassPanel } from "@/components/ui/GlassPanel";
+import { GlassSelect } from "@/components/ui/GlassSelect";
 import {
   fetchAdminUsers,
   updateAdminUser,
@@ -151,16 +152,21 @@ export default function AdminUsersPage() {
           onChange={(e) => { setSearch(e.target.value); setPage(1); }}
           className="glass-input flex-1 min-w-[200px] px-4 py-2 text-sm"
         />
-        <select
+        <GlassSelect
           value={roleFilter}
-          onChange={(e) => { setRoleFilter(e.target.value); setPage(1); }}
-          className="glass-select px-4 py-2 text-sm"
-        >
-          <option value="">Все роли</option>
-          <option value="applicant">Студенты</option>
-          <option value="employer">Работодатели</option>
-          <option value="curator">Кураторы</option>
-        </select>
+          onChange={(v) => {
+            setRoleFilter(v);
+            setPage(1);
+          }}
+          options={[
+            { value: "", label: "Все роли" },
+            { value: "applicant", label: "Студенты" },
+            { value: "employer", label: "Работодатели" },
+            { value: "curator", label: "Кураторы" },
+          ]}
+          className="w-full min-w-0 sm:w-52"
+          buttonClassName="px-4 py-2 text-sm"
+        />
       </GlassPanel>
 
       {loading ? (
@@ -202,7 +208,7 @@ export default function AdminUsersPage() {
                     </button>
                     <button
                       onClick={() => handleDelete(u.id)}
-                      className="rounded-lg bg-red-500/10 p-2 text-red-400 transition hover:bg-red-500/20"
+                      className="moderation-icon-pill rounded-lg border-2 border-red-800/50 bg-red-200 p-2 text-[var(--control-ink-strong)] transition hover:bg-red-300/85 dark:border-red-500/35 dark:bg-red-950/45 dark:text-red-200 dark:hover:bg-red-900/55 [&_svg]:text-current"
                       title="Удалить"
                     >
                       <HugeiconsIcon icon={Delete01Icon} size={16} />
@@ -272,15 +278,17 @@ export default function AdminUsersPage() {
               </div>
               <div>
                 <label className="text-sm text-[var(--text-secondary)]">Роль</label>
-                <select
-                  className="glass-select mt-1 w-full px-4 py-2 text-sm"
+                <GlassSelect
+                  className="mt-1 w-full"
+                  buttonClassName="px-4 py-2 text-sm"
                   value={editUser.role}
-                  onChange={(e) => setEditUser(u => u ? { ...u, role: e.target.value } : null)}
-                >
-                  <option value="applicant">Студент</option>
-                  <option value="employer">Работодатель</option>
-                  <option value="curator">Куратор</option>
-                </select>
+                  onChange={(v) => setEditUser((u) => (u ? { ...u, role: v } : null))}
+                  options={[
+                    { value: "applicant", label: "Студент" },
+                    { value: "employer", label: "Работодатель" },
+                    { value: "curator", label: "Куратор" },
+                  ]}
+                />
               </div>
               <div className="flex gap-2">
                 <button
@@ -345,15 +353,17 @@ export default function AdminUsersPage() {
               </div>
               <div>
                 <label className="text-sm text-[var(--text-secondary)]">Роль</label>
-                <select
-                  className="glass-select mt-1 w-full px-4 py-2 text-sm"
+                <GlassSelect
+                  className="mt-1 w-full"
+                  buttonClassName="px-4 py-2 text-sm"
                   value={newUser.role}
-                  onChange={(e) => setNewUser(u => ({ ...u, role: e.target.value }))}
-                >
-                  <option value="applicant">Студент</option>
-                  <option value="employer">Работодатель</option>
-                  <option value="curator">Куратор</option>
-                </select>
+                  onChange={(v) => setNewUser((u) => ({ ...u, role: v }))}
+                  options={[
+                    { value: "applicant", label: "Студент" },
+                    { value: "employer", label: "Работодатель" },
+                    { value: "curator", label: "Куратор" },
+                  ]}
+                />
               </div>
               <div className="flex gap-2">
                 <button

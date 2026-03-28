@@ -88,8 +88,8 @@ export default function CompanyPage() {
               className={cn(
                 "status-badge-pill mt-3 inline-flex rounded-full px-3 py-1 text-xs font-medium",
                 emp.verified
-                  ? "border border-emerald-800/35 bg-emerald-200 !text-black shadow-sm dark:border-transparent dark:bg-emerald-500/15 dark:!text-emerald-200"
-                  : "border border-amber-800/35 bg-amber-200 !text-black shadow-sm dark:border-transparent dark:bg-amber-500/15 dark:!text-amber-200",
+                  ? "border border-emerald-800/35 bg-emerald-200 text-[#2d1a0e] shadow-sm dark:border-transparent dark:bg-emerald-500/15 dark:!text-emerald-200"
+                  : "border border-amber-800/35 bg-amber-200 text-[#2d1a0e] shadow-sm dark:border-transparent dark:bg-amber-500/15 dark:!text-amber-200",
               )}
             >
               {emp.verified ? "Верифицировано" : "Ожидает верификации"}

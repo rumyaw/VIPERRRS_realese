@@ -13,6 +13,7 @@ type ctxKey string
 
 const UserIDKey ctxKey = "userID"
 const UserRoleKey ctxKey = "userRole"
+const UserEmailKey ctxKey = "userEmail"
 
 func BearerJWT(secret string) func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
@@ -44,6 +45,7 @@ func BearerJWT(secret string) func(http.Handler) http.Handler {
 			}
 			ctx := context.WithValue(r.Context(), UserIDKey, uid.String())
 			ctx = context.WithValue(ctx, UserRoleKey, string(claims.Role))
+			ctx = context.WithValue(ctx, UserEmailKey, claims.Email)
 			next.ServeHTTP(w, r.WithContext(ctx))
 		})
 	}

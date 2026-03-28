@@ -3,11 +3,12 @@
 import { motion } from "framer-motion";
 import Link from "next/link";
 import { useParams } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useEffect, useState, Suspense } from "react";
 import { GlassPanel } from "@/components/ui/GlassPanel";
 import { fetchPublicEmployerProfile, type PublicEmployerProfileApi } from "@/lib/api";
+import { EmployerProfileBackLink } from "./EmployerProfileBackLink";
 
-export default function EmployerPublicProfilePage() {
+function EmployerPublicProfileInner() {
   const params = useParams<{ userId: string }>();
   const [profile, setProfile] = useState<PublicEmployerProfileApi | null>(null);
   const [loading, setLoading] = useState(true);
@@ -42,9 +43,9 @@ export default function EmployerPublicProfilePage() {
 
   return (
     <div className="mx-auto max-w-3xl space-y-6">
-      <Link href="/" className="text-sm text-[var(--text-secondary)] hover:text-[var(--text-primary)]">
-        ← На главную
-      </Link>
+      <Suspense fallback={<Link href="/">← На главную</Link>}>
+        <EmployerProfileBackLink />
+      </Suspense>
 
       <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}>
         <GlassPanel className="p-8">
@@ -60,13 +61,18 @@ export default function EmployerPublicProfilePage() {
               <div className="flex items-center gap-3">
                 <h1 className="text-2xl font-bold text-[var(--text-primary)]">{profile.companyName}</h1>
                 {profile.verified && (
-                  <span className="status-badge-pill rounded-full border border-emerald-800/35 bg-emerald-200 px-3 py-1 text-xs font-medium !text-black dark:border-transparent dark:bg-emerald-500/20 dark:!text-emerald-200">
+                  <span className="status-badge-pill rounded-full border border-emerald-800/35 bg-emerald-200 px-3 py-1 text-xs font-medium text-[#2d1a0e] dark:border-transparent dark:bg-emerald-500/20 dark:!text-emerald-200">
                     Верифицировано
                   </span>
                 )}
               </div>
               {profile.industry && (
                 <p className="mt-1 text-sm text-[var(--brand-magenta)]">{profile.industry}</p>
+              )}
+              {profile.inn && (
+                <p className="mt-2 text-sm text-[var(--text-secondary)]">
+                  ИНН: <span className="text-[var(--text-primary)]">{profile.inn}</span>
+                </p>
               )}
             </div>
           </div>
@@ -96,3 +102,5 @@ export default function EmployerPublicProfilePage() {
     </div>
   );
 }
+
+export default EmployerPublicProfileInner;

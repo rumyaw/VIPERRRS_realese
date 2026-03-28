@@ -818,6 +818,7 @@ type PublicEmployerProfile struct {
 	Description string
 	Industry    string
 	Website     string
+	INN         string
 	Verified    bool
 	LogoURL     *string
 }
@@ -833,12 +834,12 @@ func (r *UserRepository) IsEmployerVerified(ctx context.Context, userID uuid.UUI
 
 func (r *UserRepository) GetPublicEmployerProfile(ctx context.Context, userID uuid.UUID) (*PublicEmployerProfile, error) {
 	const q = `
-SELECT ep.user_id, ep.company_name, ep.description, ep.industry, ep.website, ep.verified, ep.logo_url
+SELECT ep.user_id, ep.company_name, ep.description, ep.industry, ep.website, COALESCE(ep.inn, ''), ep.verified, ep.logo_url
 FROM employer_profiles ep
 WHERE ep.user_id = $1`
 	var p PublicEmployerProfile
 	var uid uuid.UUID
-	err := r.pool.QueryRow(ctx, q, userID).Scan(&uid, &p.CompanyName, &p.Description, &p.Industry, &p.Website, &p.Verified, &p.LogoURL)
+	err := r.pool.QueryRow(ctx, q, userID).Scan(&uid, &p.CompanyName, &p.Description, &p.Industry, &p.Website, &p.INN, &p.Verified, &p.LogoURL)
 	if err != nil {
 		return nil, err
 	}

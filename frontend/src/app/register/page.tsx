@@ -109,7 +109,7 @@ export default function RegisterPage() {
             </p>
           )}
           {error && (
-            <p className="rounded-xl border border-red-500/40 bg-red-500/10 px-3 py-2 text-sm text-red-200">
+            <p className="rounded-xl border-2 border-red-800/45 bg-red-100 px-3 py-2 text-sm font-medium text-[var(--control-ink-strong)] dark:border-red-500/40 dark:bg-red-500/15 dark:text-red-100">
               {error}
             </p>
           )}

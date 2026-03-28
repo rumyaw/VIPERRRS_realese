@@ -91,7 +91,7 @@ export default function AdminDashboardPage() {
   }
 
   return (
-    <div className="mx-auto max-w-7xl space-y-6">
+    <div className="mx-auto w-full min-w-0 max-w-7xl space-y-6">
       {/* Header */}
       <div className="flex flex-wrap items-center justify-between gap-4">
         <div>
@@ -112,7 +112,7 @@ export default function AdminDashboardPage() {
             Карточки
           </Link>
           <a
-            href="http://localhost:3001"
+            href="/grafana/"
             target="_blank"
             rel="noreferrer"
             className="rounded-xl border border-[var(--glass-border)] bg-[var(--glass-bg)] px-4 py-2 text-sm text-[var(--text-secondary)] transition hover:text-[var(--text-primary)]"
@@ -129,7 +129,7 @@ export default function AdminDashboardPage() {
       </div>
 
       {/* Stats Cards */}
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
+      <div className="grid min-w-0 grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-5">
         <StatCard
           icon={<HugeiconsIcon icon={UserGroupIcon} size={20} />}
           label="Пользователей"
@@ -164,30 +164,32 @@ export default function AdminDashboardPage() {
         />
       </div>
 
-      {/* Charts */}
-      <div className="grid gap-4 lg:grid-cols-2">
-        <GlassPanel className="p-5">
-          <h3 className="mb-4 flex items-center gap-2 text-lg font-semibold text-[var(--text-primary)]">
-            <TrendingUp className="h-5 w-5 text-[var(--brand-cyan)]" />
+      {/* Charts: min-w-0 + overflow, чтобы canvas не вылезал за экран на узких вьюпортах */}
+      <div className="grid min-w-0 grid-cols-1 gap-4 lg:grid-cols-2">
+        <GlassPanel className="min-w-0 overflow-x-auto p-4 sm:p-5">
+          <h3 className="mb-3 flex items-center gap-2 text-base font-semibold text-[var(--text-primary)] sm:mb-4 sm:text-lg">
+            <TrendingUp className="h-5 w-5 shrink-0 text-[var(--brand-cyan)]" />
             Активность за 30 дней
           </h3>
-          <div className="h-[280px]">
+          <div className="relative h-[220px] w-full min-w-0 max-w-full sm:h-[280px]">
             {timeline && <LineChart data={timeline} />}
           </div>
         </GlassPanel>
 
-        <GlassPanel className="p-5">
-          <h3 className="mb-4 text-lg font-semibold text-[var(--text-primary)]">Распределение по типам</h3>
-          <div className="h-[280px]">
+        <GlassPanel className="min-w-0 overflow-x-auto p-4 sm:p-5">
+          <h3 className="mb-3 text-base font-semibold text-[var(--text-primary)] sm:mb-4 sm:text-lg">
+            Распределение по типам
+          </h3>
+          <div className="relative mx-auto h-[220px] w-full min-w-0 max-w-full sm:h-[280px]">
             {stats && <DoughnutChart stats={stats} />}
           </div>
         </GlassPanel>
       </div>
 
       {/* Moderation Queue */}
-      <div className="grid gap-4 lg:grid-cols-2">
+      <div className="grid min-w-0 grid-cols-1 gap-4 lg:grid-cols-2">
         {/* Companies */}
-        <GlassPanel className="p-5">
+        <GlassPanel className="min-w-0 p-5">
           <h3 className="mb-4 text-lg font-semibold text-[var(--text-primary)]">
             Верификация компаний ({pendingCompanies.length})
           </h3>
@@ -204,17 +206,25 @@ export default function AdminDashboardPage() {
                     <p className="font-medium text-[var(--text-primary)] truncate">{company.companyName}</p>
                     <p className="text-xs text-[var(--text-secondary)]">ИНН: {company.inn || "не указан"}</p>
                     <p className="text-xs text-[var(--text-secondary)]">{company.email}</p>
+                    <Link
+                      href={`/employer/profile/${company.userId}?from=admin-pending`}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="mt-2 inline-block text-xs font-medium text-[var(--brand-cyan)] hover:underline"
+                    >
+                      Профиль компании →
+                    </Link>
                   </div>
                   <div className="flex gap-1">
                     <button
                       onClick={() => handleVerifyCompany(company.userId, true)}
-                      className="rounded bg-emerald-500/15 px-2 py-1 text-xs font-medium text-emerald-700 dark:text-emerald-300 hover:bg-emerald-500/25"
+                      className="rounded border-2 border-emerald-800/45 bg-emerald-200 px-2 py-1 text-xs font-semibold text-[var(--control-ink-strong)] hover:bg-emerald-300/90 dark:border-transparent dark:bg-emerald-500/20 dark:text-emerald-100 dark:hover:bg-emerald-500/30"
                     >
                       ✓
                     </button>
                     <button
                       onClick={() => handleVerifyCompany(company.userId, false)}
-                      className="rounded bg-red-500/15 px-2 py-1 text-xs font-medium text-red-700 dark:text-red-300 hover:bg-red-500/25"
+                      className="rounded border-2 border-red-800/50 bg-red-200 px-2 py-1 text-xs font-semibold text-[var(--control-ink-strong)] hover:bg-red-300/90 dark:border-transparent dark:bg-red-500/20 dark:text-red-100 dark:hover:bg-red-500/30"
                     >
                       ✕
                     </button>
@@ -226,7 +236,7 @@ export default function AdminDashboardPage() {
         </GlassPanel>
 
         {/* Opportunities */}
-        <GlassPanel className="p-5">
+        <GlassPanel className="min-w-0 p-5">
           <h3 className="mb-4 text-lg font-semibold text-[var(--text-primary)]">
             Модерация карточек ({pendingOpps.length})
           </h3>
@@ -246,13 +256,13 @@ export default function AdminDashboardPage() {
                   <div className="flex gap-1">
                     <button
                       onClick={() => handleModerateOpp(String(opp.id), "approved")}
-                      className="rounded bg-emerald-500/15 px-2 py-1 text-xs font-medium text-emerald-700 dark:text-emerald-300 hover:bg-emerald-500/25"
+                      className="rounded border-2 border-emerald-800/45 bg-emerald-200 px-2 py-1 text-xs font-semibold text-[var(--control-ink-strong)] hover:bg-emerald-300/90 dark:border-transparent dark:bg-emerald-500/20 dark:text-emerald-100 dark:hover:bg-emerald-500/30"
                     >
                       ✓
                     </button>
                     <button
                       onClick={() => handleModerateOpp(String(opp.id), "rejected")}
-                      className="rounded bg-red-500/15 px-2 py-1 text-xs font-medium text-red-700 dark:text-red-300 hover:bg-red-500/25"
+                      className="rounded border-2 border-red-800/50 bg-red-200 px-2 py-1 text-xs font-semibold text-[var(--control-ink-strong)] hover:bg-red-300/90 dark:border-transparent dark:bg-red-500/20 dark:text-red-100 dark:hover:bg-red-500/30"
                     >
                       ✕
                     </button>
@@ -285,7 +295,7 @@ function StatCard({
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
       className={cn(
-        "relative overflow-hidden rounded-2xl border border-[var(--glass-border)] bg-[var(--glass-bg)] p-4",
+        "relative min-w-0 overflow-hidden rounded-2xl border border-[var(--glass-border)] bg-[var(--glass-bg)] p-4",
         alert && "border-amber-500/50"
       )}
     >

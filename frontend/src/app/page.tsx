@@ -5,6 +5,7 @@ import dynamic from "next/dynamic";
 import { useEffect, useMemo, useState, useCallback } from "react";
 import { OpportunityCard } from "@/components/opportunities/OpportunityCard";
 import { GlassPanel } from "@/components/ui/GlassPanel";
+import { GlassSelect } from "@/components/ui/GlassSelect";
 import { useAuth } from "@/contexts/auth-context";
 import { useFavorites } from "@/hooks/use-favorites";
 import Link from "next/link";
@@ -44,6 +45,35 @@ export default function HomePage() {
     });
     return Array.from(set).sort();
   }, [opportunities]);
+
+  const tagOptions = useMemo(
+    () => [{ value: "", label: "Все технологии" }, ...TAG_PRESETS.map((t) => ({ value: t, label: t }))],
+    [],
+  );
+  const formatOptions = useMemo(
+    () => [
+      { value: "", label: "Любой" },
+      { value: "office", label: "Офис" },
+      { value: "hybrid", label: "Гибрид" },
+      { value: "remote", label: "Удалённо" },
+    ],
+    [],
+  );
+  const cityOptions = useMemo(
+    () => [{ value: "", label: "Все города" }, ...cities.map((c) => ({ value: c, label: c }))],
+    [cities],
+  );
+  const typeOptions = useMemo(
+    () => [
+      { value: "", label: "Все типы" },
+      { value: "vacancy_junior", label: "Вакансия Junior" },
+      { value: "vacancy_senior", label: "Вакансия Middle+" },
+      { value: "internship", label: "Стажировка" },
+      { value: "mentorship", label: "Менторство" },
+      { value: "event", label: "Мероприятие" },
+    ],
+    [],
+  );
 
   useEffect(() => {
     const abort = new AbortController();
@@ -168,62 +198,56 @@ export default function HomePage() {
 
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
             <div className="min-w-0 space-y-2">
-              <label className="text-xs font-medium text-[var(--text-secondary)]">Тег / стек</label>
-              <select
-                className="glass-select w-full px-4 py-3 text-sm outline-none"
+              <label className="text-xs font-medium text-[var(--text-secondary)]" htmlFor="filter-tag">
+                Тег / стек
+              </label>
+              <GlassSelect
+                id="filter-tag"
                 value={tag}
-                onChange={(e) => setTag(e.target.value)}
-              >
-                <option value="">Все технологии</option>
-                {TAG_PRESETS.map((t) => (
-                  <option key={t} value={t}>
-                    {t}
-                  </option>
-                ))}
-              </select>
+                onChange={setTag}
+                options={tagOptions}
+                className="w-full"
+                buttonClassName="px-4 py-3 text-sm outline-none"
+              />
             </div>
             <div className="min-w-0 space-y-2">
-              <label className="text-xs font-medium text-[var(--text-secondary)]">Формат</label>
-              <select
-                className="glass-select w-full px-4 py-3 text-sm outline-none"
+              <label className="text-xs font-medium text-[var(--text-secondary)]" htmlFor="filter-format">
+                Формат
+              </label>
+              <GlassSelect
+                id="filter-format"
                 value={format}
-                onChange={(e) => setFormat(e.target.value as WorkFormat | "")}
-              >
-                <option value="">Любой</option>
-                <option value="office">Офис</option>
-                <option value="hybrid">Гибрид</option>
-                <option value="remote">Удалённо</option>
-              </select>
+                onChange={(v) => setFormat(v as WorkFormat | "")}
+                options={formatOptions}
+                className="w-full"
+                buttonClassName="px-4 py-3 text-sm outline-none"
+              />
             </div>
             <div className="min-w-0 space-y-2">
-              <label className="text-xs font-medium text-[var(--text-secondary)]">Город</label>
-              <select
-                className="glass-select w-full px-4 py-3 text-sm outline-none"
+              <label className="text-xs font-medium text-[var(--text-secondary)]" htmlFor="filter-city">
+                Город
+              </label>
+              <GlassSelect
+                id="filter-city"
                 value={city}
-                onChange={(e) => setCity(e.target.value)}
-              >
-                <option value="">Все города</option>
-                {cities.map((c) => (
-                  <option key={c} value={c}>
-                    {c}
-                  </option>
-                ))}
-              </select>
+                onChange={setCity}
+                options={cityOptions}
+                className="w-full"
+                buttonClassName="px-4 py-3 text-sm outline-none"
+              />
             </div>
             <div className="min-w-0 space-y-2">
-              <label className="text-xs font-medium text-[var(--text-secondary)]">Тип</label>
-              <select
-                className="glass-select w-full px-4 py-3 text-sm outline-none"
+              <label className="text-xs font-medium text-[var(--text-secondary)]" htmlFor="filter-type">
+                Тип
+              </label>
+              <GlassSelect
+                id="filter-type"
                 value={typeFilter}
-                onChange={(e) => setTypeFilter(e.target.value)}
-              >
-                <option value="">Все типы</option>
-                <option value="vacancy_junior">Вакансия Junior</option>
-                <option value="vacancy_senior">Вакансия Middle+</option>
-                <option value="internship">Стажировка</option>
-                <option value="mentorship">Менторство</option>
-                <option value="event">Мероприятие</option>
-              </select>
+                onChange={setTypeFilter}
+                options={typeOptions}
+                className="w-full"
+                buttonClassName="px-4 py-3 text-sm outline-none"
+              />
             </div>
           </div>
 

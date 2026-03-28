@@ -13,6 +13,7 @@ import {
 } from "@/lib/api";
 import { useToast } from "@/hooks/useToast";
 import { SkillPicker } from "@/components/ui/SkillPicker";
+import { GlassSelect } from "@/components/ui/GlassSelect";
 
 const tabs = [
   { id: "profile", label: "Профиль" },
@@ -119,19 +120,16 @@ export function ApplicantCabinet() {
               <label className="text-xs font-medium text-[var(--text-secondary)]">
                 Статус поиска работы
               </label>
-              <select
-                className="glass-select mt-2 w-full px-3 py-2.5 text-sm"
+              <GlassSelect
+                className="mt-2 w-full"
+                buttonClassName="px-3 py-2.5 text-sm"
                 value={profile.jobSearchStatus}
-                onChange={(e) =>
-                  updateApplicant({ jobSearchStatus: e.target.value as JobSearchStatus })
-                }
-              >
-                {(Object.keys(JOB_SEARCH_LABELS) as JobSearchStatus[]).map((k) => (
-                  <option key={k} value={k}>
-                    {JOB_SEARCH_LABELS[k]}
-                  </option>
-                ))}
-              </select>
+                onChange={(v) => updateApplicant({ jobSearchStatus: v as JobSearchStatus })}
+                options={(Object.keys(JOB_SEARCH_LABELS) as JobSearchStatus[]).map((k) => ({
+                  value: k,
+                  label: JOB_SEARCH_LABELS[k],
+                }))}
+              />
               <p className="mt-2 text-xs text-[var(--text-secondary)]">
                 Виден вам и (при открытом профиле) контактам для рекомендаций.
               </p>

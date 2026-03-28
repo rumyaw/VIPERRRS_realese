@@ -288,6 +288,19 @@ WHERE a.id = $2
 	return nil
 }
 
+// DeleteByAuthor удаляет карточку только если она принадлежит работодателю.
+func (r *OpportunityRepository) DeleteByAuthor(ctx context.Context, opportunityID, authorID uuid.UUID) error {
+	const q = `DELETE FROM opportunities WHERE id = $1 AND author_id = $2`
+	res, err := r.pool.Exec(ctx, q, opportunityID, authorID)
+	if err != nil {
+		return err
+	}
+	if res.RowsAffected() == 0 {
+		return fmt.Errorf("opportunity not found")
+	}
+	return nil
+}
+
 func (r *OpportunityRepository) ListPendingOpportunities(ctx context.Context) ([]map[string]any, error) {
 	const q = `
 SELECT o.id, o.title, o.company_name, o.type::text, o.work_format::text, o.created_at,

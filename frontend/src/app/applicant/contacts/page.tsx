@@ -2,8 +2,8 @@
 
 import { motion } from "framer-motion";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
-import { useEffect, useState, useCallback } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
+import { useEffect, useState, useCallback, Suspense } from "react";
 import { useAuth } from "@/contexts/auth-context";
 import { GlassPanel } from "@/components/ui/GlassPanel";
 import { JOB_SEARCH_LABELS } from "@/lib/profile-defaults";
@@ -45,9 +45,14 @@ const tabs = [
 
 type TabId = (typeof tabs)[number]["id"];
 
-export default function ContactsPage() {
+function isTabId(v: string | null): v is TabId {
+  return v === "contacts" || v === "requests" || v === "recommendations";
+}
+
+function ContactsPageInner() {
   const { user } = useAuth();
   const router = useRouter();
+  const searchParams = useSearchParams();
   const { showToast } = useToast();
   const [tab, setTab] = useState<TabId>("contacts");
   const [contacts, setContacts] = useState<ApplicantContactApi[]>([]);
@@ -57,6 +62,11 @@ export default function ContactsPage() {
   const [searchQuery, setSearchQuery] = useState("");
   const [searchResults, setSearchResults] = useState<SearchApplicantApi[]>([]);
   const [searching, setSearching] = useState(false);
+
+  useEffect(() => {
+    const t = searchParams.get("tab");
+    if (isTabId(t)) setTab(t);
+  }, [searchParams]);
 
   useEffect(() => {
     if (!user || user.role !== "applicant") {
@@ -271,7 +281,12 @@ export default function ContactsPage() {
                               В контактах
                             </span>
                           ) : s.hasPending ? (
-                            <span className={cn("rounded-lg px-3 py-1.5 text-xs", applicationStatusBadge.pending)}>
+                            <span
+                              className={cn(
+                                "inline-flex min-h-[40px] min-w-[10rem] items-center justify-center rounded-lg px-3 py-2 text-center text-xs leading-tight",
+                                applicationStatusBadge.pending,
+                              )}
+                            >
                               Заявка отправлена
                             </span>
                           ) : (
@@ -513,7 +528,7 @@ export default function ContactsPage() {
                                 )}
                                 <div className="mt-4 flex gap-3">
                                   <Link
-                                    href={`/opportunities/${rec.opportunityId}`}
+                                    href={`/opportunities/${rec.opportunityId}?from=recommendations`}
                                     className="inline-flex items-center gap-1 text-sm text-[var(--brand-cyan)] hover:underline"
                                   >
                                     Посмотреть вакансию <HugeiconsIcon icon={ArrowRight01Icon} size={12} />
@@ -549,7 +564,7 @@ export default function ContactsPage() {
                               </p>
                             </div>
                             <Link
-                              href={`/opportunities/${rec.opportunityId}`}
+                              href={`/opportunities/${rec.opportunityId}?from=recommendations`}
                               className="text-xs text-[var(--brand-cyan)] hover:underline"
                             >
                               Открыть
@@ -566,5 +581,21 @@ export default function ContactsPage() {
         </>
       )}
     </div>
+  );
+}
+
+export default function ContactsPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="mx-auto max-w-4xl">
+          <GlassPanel className="flex h-48 items-center justify-center">
+            <div className="h-8 w-8 animate-spin rounded-full border-2 border-[var(--brand-cyan)] border-t-transparent" />
+          </GlassPanel>
+        </div>
+      }
+    >
+      <ContactsPageInner />
+    </Suspense>
   );
 }

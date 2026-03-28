@@ -8,9 +8,10 @@ import { useAuth } from "@/contexts/auth-context";
 import { GlassPanel } from "@/components/ui/GlassPanel";
 import { fetchEmployerApplications, setEmployerApplicationStatus, type EmployerApplication } from "@/lib/api";
 import { cn } from "@/lib/cn";
-import { Check, X, Clock, User, Briefcase } from "lucide-react";
+import { Check, X, Clock, User, Briefcase, ExternalLink } from "lucide-react";
 import { useToast } from "@/hooks/useToast";
 import { applicationStatusBadge, applicationActionButton } from "@/lib/status-badges";
+import { GlassSelect } from "@/components/ui/GlassSelect";
 
 function EmployerApplicationsContent() {
   const { user } = useAuth();
@@ -20,7 +21,8 @@ function EmployerApplicationsContent() {
   const [applications, setApplications] = useState<EmployerApplication[]>([]);
   const [loading, setLoading] = useState(true);
   const [filterOpp, setFilterOpp] = useState<string | null>(searchParams.get("opp"));
-  const [filterStatus, setFilterStatus] = useState("");
+  /** sections = на рассмотрении отдельно + резерв + свёрнутые принятые/отклонённые */
+  const [listMode, setListMode] = useState<"sections" | "pending" | "reserve" | "accepted" | "rejected">("sections");
   const [searchQuery, setSearchQuery] = useState("");
 
   useEffect(() => {
@@ -62,14 +64,21 @@ function EmployerApplicationsContent() {
     return true;
   };
 
-  const activeApps = applications.filter(
-    (a) =>
-      a.status !== "reserve" &&
-      passesOppSearch(a) &&
-      (!filterStatus || a.status === filterStatus),
-  );
-
+  const pendingApps = applications.filter((a) => a.status === "pending" && passesOppSearch(a));
   const reserveApps = applications.filter((a) => a.status === "reserve" && passesOppSearch(a));
+  const acceptedApps = applications.filter((a) => a.status === "accepted" && passesOppSearch(a));
+  const rejectedApps = applications.filter((a) => a.status === "rejected" && passesOppSearch(a));
+
+  const singleStatusList =
+    listMode === "pending"
+      ? pendingApps
+      : listMode === "reserve"
+        ? reserveApps
+        : listMode === "accepted"
+          ? acceptedApps
+          : listMode === "rejected"
+            ? rejectedApps
+            : [];
 
   const uniqueOpps = Array.from(new Map(applications.map((a) => [a.opportunityId, a.opportunity])).entries());
 
@@ -94,11 +103,17 @@ function EmployerApplicationsContent() {
             <div className="min-w-0 flex-1">
               <div className="flex items-center gap-3">
                 <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-[var(--glass-bg-strong)]">
-                  <User className="h-5 w-5 text-[var(--text-secondary)]" />
+                  <User className="h-5 w-5 text-[#2d1a0e] dark:text-[var(--text-secondary)]" />
                 </div>
                 <div className="min-w-0">
                   <p className="font-medium text-[var(--text-primary)]">{app.applicant.displayName}</p>
                   <p className="truncate text-xs text-[var(--text-secondary)]">{app.applicant.email}</p>
+                  <Link
+                    href={`/applicant/profile/${app.applicant.id}?from=employer-applications`}
+                    className="mt-1 inline-flex items-center gap-1 text-xs font-medium text-[var(--brand-cyan)] hover:underline"
+                  >
+                    Полный профиль <ExternalLink className="h-3 w-3" />
+                  </Link>
                 </div>
               </div>
 
@@ -142,6 +157,7 @@ function EmployerApplicationsContent() {
                     onClick={() => void handleStatusChange(app.id, "accepted")}
                     className={`rounded-lg px-3 py-2 text-xs font-medium transition sm:py-1.5 ${applicationActionButton.accept}`}
                   >
+                    <Check className="h-3.5 w-3.5" />
                     Принять
                   </button>
                   <button
@@ -149,6 +165,7 @@ function EmployerApplicationsContent() {
                     onClick={() => void handleStatusChange(app.id, "rejected")}
                     className={`rounded-lg px-3 py-2 text-xs font-medium transition sm:py-1.5 ${applicationActionButton.reject}`}
                   >
+                    <X className="h-3.5 w-3.5" />
                     Отклонить
                   </button>
                   <button
@@ -156,6 +173,7 @@ function EmployerApplicationsContent() {
                     onClick={() => void handleStatusChange(app.id, "reserve")}
                     className={`rounded-lg px-3 py-2 text-xs font-medium transition sm:py-1.5 ${applicationActionButton.reserve}`}
                   >
+                    <Clock className="h-3.5 w-3.5" />
                     Резерв
                   </button>
                 </div>
@@ -168,6 +186,7 @@ function EmployerApplicationsContent() {
                     onClick={() => void handleStatusChange(app.id, "accepted")}
                     className={`rounded-lg px-3 py-2 text-xs font-medium transition sm:py-1.5 ${applicationActionButton.accept}`}
                   >
+                    <Check className="h-3.5 w-3.5" />
                     Принять из резерва
                   </button>
                   <button
@@ -175,6 +194,7 @@ function EmployerApplicationsContent() {
                     onClick={() => void handleStatusChange(app.id, "rejected")}
                     className={`rounded-lg px-3 py-2 text-xs font-medium transition sm:py-1.5 ${applicationActionButton.reject}`}
                   >
+                    <X className="h-3.5 w-3.5" />
                     Отклонить
                   </button>
                 </div>
@@ -186,7 +206,11 @@ function EmployerApplicationsContent() {
     );
   };
 
-  const emptyAll = !loading && activeApps.length === 0 && reserveApps.length === 0;
+  const totalVisible =
+    listMode === "sections"
+      ? pendingApps.length + reserveApps.length + acceptedApps.length + rejectedApps.length
+      : singleStatusList.length;
+  const emptyAll = !loading && totalVisible === 0;
 
   return (
     <div className="mx-auto max-w-5xl space-y-6 px-1 sm:px-0">
@@ -194,7 +218,7 @@ function EmployerApplicationsContent() {
         <div>
           <h1 className="text-2xl font-bold text-[var(--text-primary)]">Отклики</h1>
           <p className="mt-1 text-[var(--text-secondary)]">
-            {filterOpp ? "Фильтр по карточке" : "Активные отклики и резерв отдельно"}
+            {filterOpp ? "Фильтр по карточке" : "На рассмотрении — вверху; принятые и отклонённые — в свёрнутых блоках"}
           </p>
         </div>
         <Link
@@ -213,28 +237,31 @@ function EmployerApplicationsContent() {
           onChange={(e) => setSearchQuery(e.target.value)}
           className="glass-input min-h-[44px] w-full flex-1 px-4 py-2 text-sm sm:min-w-[200px]"
         />
-        <select
-          value={filterStatus}
-          onChange={(e) => setFilterStatus(e.target.value)}
-          className="glass-select min-h-[44px] w-full px-4 py-2 text-sm sm:w-auto"
-        >
-          <option value="">Все статусы (кроме резерва)</option>
-          <option value="pending">На рассмотрении</option>
-          <option value="accepted">Приняты</option>
-          <option value="rejected">Отклонены</option>
-        </select>
-        <select
+        <GlassSelect
+          value={listMode}
+          onChange={(v) =>
+            setListMode(v as "sections" | "pending" | "reserve" | "accepted" | "rejected")
+          }
+          options={[
+            { value: "sections", label: "Все разделы на странице" },
+            { value: "pending", label: "Только на рассмотрении" },
+            { value: "reserve", label: "Только в резерве" },
+            { value: "accepted", label: "Только принятые" },
+            { value: "rejected", label: "Только отклонённые" },
+          ]}
+          className="w-full sm:w-auto sm:min-w-[14rem]"
+          buttonClassName="min-h-[44px] px-4 py-2 text-sm"
+        />
+        <GlassSelect
           value={filterOpp ?? ""}
-          onChange={(e) => setFilterOpp(e.target.value || null)}
-          className="glass-select min-h-[44px] w-full px-4 py-2 text-sm sm:w-auto"
-        >
-          <option value="">Все карточки</option>
-          {uniqueOpps.map(([id, title]) => (
-            <option key={id} value={id}>
-              {title}
-            </option>
-          ))}
-        </select>
+          onChange={(v) => setFilterOpp(v || null)}
+          options={[
+            { value: "", label: "Все карточки" },
+            ...uniqueOpps.map(([id, title]) => ({ value: id, label: title })),
+          ]}
+          className="w-full sm:w-auto sm:min-w-[14rem]"
+          buttonClassName="min-h-[44px] px-4 py-2 text-sm"
+        />
       </GlassPanel>
 
       {loading ? (
@@ -243,20 +270,37 @@ function EmployerApplicationsContent() {
         </GlassPanel>
       ) : emptyAll ? (
         <GlassPanel className="flex h-64 flex-col items-center justify-center gap-4 p-8 text-center">
-          <Briefcase className="h-12 w-12 text-[var(--text-secondary)]" />
+          <Briefcase className="h-12 w-12 text-[#2d1a0e] dark:text-[var(--text-secondary)]" />
           <div>
             <p className="text-lg font-medium text-[var(--text-primary)]">Нет откликов</p>
             <p className="text-sm text-[var(--text-secondary)]">Пока никто не откликнулся на ваши карточки</p>
           </div>
         </GlassPanel>
+      ) : listMode !== "sections" ? (
+        <section className="space-y-3">
+          <h2 className="text-lg font-semibold text-[var(--text-primary)]">
+            {listMode === "pending" && "На рассмотрении"}
+            {listMode === "reserve" && "В резерве"}
+            {listMode === "accepted" && "Принятые кандидаты"}
+            {listMode === "rejected" && "Отклонённые кандидаты"}
+          </h2>
+          {singleStatusList.length === 0 ? (
+            <p className="text-sm text-[var(--text-secondary)]">Нет откликов по выбранному фильтру.</p>
+          ) : (
+            singleStatusList.map((app, idx) => renderCard(app, idx))
+          )}
+        </section>
       ) : (
         <div className="space-y-8">
           <section className="space-y-3">
-            <h2 className="text-lg font-semibold text-[var(--text-primary)]">Активные отклики</h2>
-            {activeApps.length === 0 ? (
-              <p className="text-sm text-[var(--text-secondary)]">Нет откликов в этом разделе по выбранным фильтрам.</p>
+            <h2 className="text-lg font-semibold text-[var(--text-primary)]">Требуют решения</h2>
+            <p className="text-sm text-[var(--text-secondary)]">
+              Новые отклики: примите, отклоните или отправьте в резерв.
+            </p>
+            {pendingApps.length === 0 ? (
+              <p className="text-sm text-[var(--text-secondary)]">Сейчас никто не ждёт решения.</p>
             ) : (
-              activeApps.map((app, idx) => renderCard(app, idx))
+              pendingApps.map((app, idx) => renderCard(app, idx))
             )}
           </section>
 
@@ -264,11 +308,47 @@ function EmployerApplicationsContent() {
             <section className="space-y-3 border-t border-[var(--glass-border)] pt-8">
               <h2 className="text-lg font-semibold text-[var(--text-primary)]">В резерве</h2>
               <p className="text-sm text-[var(--text-secondary)]">
-                Здесь кандидаты, которых вы отложили. Можно принять позже или отклонить.
+                Отложенные кандидаты — можно принять позже или отклонить.
               </p>
-              {reserveApps.map((app, idx) => renderCard(app, idx + activeApps.length))}
+              {reserveApps.map((app, idx) => renderCard(app, idx + pendingApps.length))}
             </section>
           )}
+
+          <details className="group border-t border-[var(--glass-border)] pt-6">
+            <summary className="cursor-pointer list-none text-lg font-semibold text-[var(--text-primary)] [&::-webkit-details-marker]:hidden">
+              <span className="inline-flex items-center gap-2">
+                Принятые кандидаты
+                <span className="rounded-full bg-[var(--glass-bg-strong)] px-2 py-0.5 text-xs font-normal text-[var(--text-secondary)]">
+                  {acceptedApps.length}
+                </span>
+              </span>
+            </summary>
+            <div className="mt-3 space-y-3">
+              {acceptedApps.length === 0 ? (
+                <p className="text-sm text-[var(--text-secondary)]">Пока нет принятых откликов.</p>
+              ) : (
+                acceptedApps.map((app, idx) => renderCard(app, idx))
+              )}
+            </div>
+          </details>
+
+          <details className="group border-t border-[var(--glass-border)] pt-6">
+            <summary className="cursor-pointer list-none text-lg font-semibold text-[var(--text-primary)] [&::-webkit-details-marker]:hidden">
+              <span className="inline-flex items-center gap-2">
+                Отклонённые кандидаты
+                <span className="rounded-full bg-[var(--glass-bg-strong)] px-2 py-0.5 text-xs font-normal text-[var(--text-secondary)]">
+                  {rejectedApps.length}
+                </span>
+              </span>
+            </summary>
+            <div className="mt-3 space-y-3">
+              {rejectedApps.length === 0 ? (
+                <p className="text-sm text-[var(--text-secondary)]">Нет отклонённых откликов.</p>
+              ) : (
+                rejectedApps.map((app, idx) => renderCard(app, idx))
+              )}
+            </div>
+          </details>
         </div>
       )}
     </div>

@@ -1,0 +1,27 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="720" height="200" viewBox="0 0 720 200">
+  <defs>
+    <linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#1a1528"/>
+      <stop offset="100%" style="stop-color:#0d1117"/>
+    </linearGradient>
+  </defs>
+  <rect width="720" height="200" rx="12" fill="url(#bg)"/>
+  <text x="360" y="36" fill="#e6edf3" font-family="system-ui,sans-serif" font-size="15" font-weight="600" text-anchor="middle">5@2K9 2E>4 2 Grafana: 0:B828@>20BL PostgreSQL</text>
+  <g font-family="system-ui,sans-serif" font-size="13" fill="#c9d1d9">
+    <rect x="24" y="58" width="150" height="56" rx="8" fill="#21262d" stroke="#30363d"/>
+    <text x="99" y="92" text-anchor="middle">Connections</text>
+    <text x="99" y="108" text-anchor="middle" font-size="11" fill="#8b949e">>4:;NG5=8O</text>
+    <text x="190" y="92" fill="#f78166" font-size="18">’</text>
+    <rect x="210" y="58" width="150" height="56" rx="8" fill="#21262d" stroke="#30363d"/>
+    <text x="285" y="92" text-anchor="middle">Data sources</text>
+    <text x="285" y="108" text-anchor="middle" font-size="11" fill="#8b949e">AB>G=8:8 40==KE</text>
+    <text x="376" y="92" fill="#f78166" font-size="18">’</text>
+    <rect x="396" y="58" width="150" height="56" rx="8" fill="#21262d" stroke="#30363d"/>
+    <text x="471" y="92" text-anchor="middle">PostgreSQL</text>
+    <text x="471" y="108" text-anchor="middle" font-size="11" fill="#8b949e">>B:@KBL 8 =060BL</text>
+    <text x="562" y="92" fill="#f78166" font-size="18">’</text>
+    <rect x="582" y="58" width="114" height="56" rx="8" fill="#238636" stroke="#2ea043"/>
+    <text x="639" y="98" text-anchor="middle" fill="#fff" font-weight="600">Save</text>
+  </g>
+  <text x="360" y="158" fill="#8b949e" font-family="system-ui,sans-serif" font-size="12" text-anchor="middle">57 A>E@0=5=8O 40B0A>@A0 ?0=5;8 A SQL 87  <>3CB =5 ?>:07K20BL 40==K5.</text>
+</svg>

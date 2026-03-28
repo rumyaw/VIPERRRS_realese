@@ -449,6 +449,30 @@ func (h *Cabinet) EmployerGetOpportunity(w http.ResponseWriter, r *http.Request)
 	respond.JSON(w, http.StatusOK, opportunityDTO(o))
 }
 
+func (h *Cabinet) EmployerDeleteOpportunity(w http.ResponseWriter, r *http.Request) {
+	uid, ok := r.Context().Value(middleware.UserIDKey).(string)
+	if !ok || uid == "" {
+		respond.Error(w, http.StatusUnauthorized, "unauthorized")
+		return
+	}
+	userID, err := uuid.Parse(uid)
+	if err != nil {
+		respond.Error(w, http.StatusBadRequest, "invalid user id")
+		return
+	}
+	idStr := chi.URLParam(r, "opportunityId")
+	oppID, err := uuid.Parse(idStr)
+	if err != nil {
+		respond.Error(w, http.StatusBadRequest, "invalid id")
+		return
+	}
+	if err := h.Opps.DeleteByAuthor(r.Context(), oppID, userID); err != nil {
+		respond.Error(w, http.StatusBadRequest, "failed to delete")
+		return
+	}
+	respond.JSON(w, http.StatusOK, map[string]any{"ok": true})
+}
+
 func (h *Cabinet) EmployerApplications(w http.ResponseWriter, r *http.Request) {
 	uid, ok := r.Context().Value(middleware.UserIDKey).(string)
 	if !ok || uid == "" {
@@ -994,6 +1018,7 @@ func (h *Cabinet) EmployerPublicProfile(w http.ResponseWriter, r *http.Request) 
 		"description": p.Description,
 		"industry":    p.Industry,
 		"website":     p.Website,
+		"inn":         p.INN,
 		"verified":    p.Verified,
 	}
 	if p.LogoURL != nil {

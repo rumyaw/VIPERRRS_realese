@@ -125,6 +125,18 @@ func (h *Auth) Logout(w http.ResponseWriter, _ *http.Request) {
 	respond.JSON(w, http.StatusOK, map[string]any{"ok": true})
 }
 
+// NginxGrafanaAuth — для nginx auth_request: только куратор с валидным JWT (cookie access_token или Bearer).
+// Заголовок X-Webauth-User передаётся в Grafana (auth proxy).
+func (h *Auth) NginxGrafanaAuth(w http.ResponseWriter, r *http.Request) {
+	email, _ := r.Context().Value(middleware.UserEmailKey).(string)
+	if email == "" {
+		respond.Error(w, http.StatusUnauthorized, "unauthorized")
+		return
+	}
+	w.Header().Set("X-Webauth-User", email)
+	w.WriteHeader(http.StatusNoContent)
+}
+
 func (h *Auth) Me(w http.ResponseWriter, r *http.Request) {
 	uid, ok := r.Context().Value(middleware.UserIDKey).(string)
 	if !ok || uid == "" {
