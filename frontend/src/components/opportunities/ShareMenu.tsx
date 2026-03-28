@@ -1,7 +1,7 @@
 "use client";
 
 import { motion, AnimatePresence } from "framer-motion";
-import { useEffect, useState, useRef, useCallback } from "react";
+import { useEffect, useState, useRef, useCallback, type CSSProperties } from "react";
 import { createPortal } from "react-dom";
 import { fetchRecommendableContacts, sendRecommendation } from "@/lib/api";
 import type { RecommendableContactApi } from "@/lib/types";
@@ -34,7 +34,9 @@ function VKIcon() {
   );
 }
 
-type Anchor = { top: number; left: number; transform: string };
+type Anchor =
+  | { left: number; width: number; maxHeight: number; bottom: number }
+  | { left: number; width: number; maxHeight: number; top: number };
 
 const shareIconBtnClass =
   "flex min-h-[52px] min-w-[4.5rem] flex-1 flex-col items-center justify-center gap-1 rounded-lg px-2 py-2 text-xs transition hover:bg-[var(--glass-bg-strong)] sm:min-h-0 sm:min-w-[4.75rem] sm:flex-none";
@@ -65,30 +67,39 @@ export function ShareMenu({
     if (!el) return;
     const r = el.getBoundingClientRect();
     const margin = 8;
+    const gap = 10;
     const vw = window.innerWidth;
-    const popW = Math.min(contactsOpen ? 300 : 300, vw - 2 * margin);
+    const vh = window.innerHeight;
+    const popW = Math.min(320, vw - 2 * margin);
     const idealLeft = r.left + r.width / 2 - popW / 2;
     const left = Math.min(vw - popW - margin, Math.max(margin, idealLeft));
 
-    const estH = contactsOpen ? Math.min(320, window.innerHeight * 0.5) : 88;
-    const spaceAbove = r.top - margin;
-    const spaceBelow = window.innerHeight - r.bottom - margin;
-    /* Попап по умолчанию над кнопкой; вниз — только если сверху совсем мало места */
-    const preferAbove = spaceAbove >= estH + 4 || spaceAbove >= spaceBelow;
+    const spaceAbove = r.top - margin - gap;
+    const spaceBelow = vh - r.bottom - margin - gap;
+    const tallPanel = contactsOpen;
+    const wantMax = tallPanel ? Math.min(vh * 0.72, 420) : Math.min(220, vh * 0.4);
+    const minComfort = tallPanel ? 160 : 56;
 
-    if (preferAbove) {
+    const openBelow =
+      spaceAbove < minComfort && spaceBelow > spaceAbove;
+
+    if (openBelow) {
       setAnchor({
-        top: r.top - 12,
         left,
-        transform: "translateY(-100%)",
+        width: popW,
+        top: r.bottom + gap,
+        maxHeight: Math.max(80, Math.min(wantMax, spaceBelow)),
       });
-    } else {
-      setAnchor({
-        top: r.bottom + 8,
-        left,
-        transform: "none",
-      });
+      return;
     }
+
+    const maxHeight = Math.max(72, Math.min(wantMax, Math.max(0, spaceAbove)));
+    setAnchor({
+      left,
+      width: popW,
+      bottom: vh - r.top + gap,
+      maxHeight,
+    });
   }, [contactsOpen]);
 
   useEffect(() => {
@@ -115,6 +126,12 @@ export function ShareMenu({
   useEffect(() => {
     if (open) computeAnchor();
   }, [contactsOpen, open, computeAnchor]);
+
+  useEffect(() => {
+    if (open && contactsOpen && !loadingContacts) {
+      requestAnimationFrame(() => computeAnchor());
+    }
+  }, [open, contactsOpen, loadingContacts, contacts.length, computeAnchor]);
 
   const handleOpenContacts = async () => {
     setContactsOpen(true);
@@ -149,7 +166,20 @@ export function ShareMenu({
     typeof window !== "undefined" ? `${window.location.origin}/opportunities/${opportunityId}` : "";
 
   const popoverClass =
-    "fixed z-[1000] flex max-w-[calc(100vw-1rem)] flex-wrap justify-center gap-1 rounded-xl border border-[var(--glass-border)] bg-[color-mix(in_srgb,var(--page-bg)_98%,transparent)] p-2 shadow-2xl backdrop-blur-xl sm:flex-nowrap sm:justify-start";
+    "fixed z-[10050] flex max-w-[calc(100vw-1rem)] flex-wrap justify-center gap-1 rounded-xl border border-[var(--glass-border)] bg-[color-mix(in_srgb,var(--page-bg)_98%,transparent)] p-2 shadow-2xl backdrop-blur-xl sm:flex-nowrap sm:justify-start";
+
+  const anchorStyle = (a: Anchor): CSSProperties => {
+    const base: CSSProperties = {
+      left: a.left,
+      width: a.width,
+      maxHeight: a.maxHeight,
+      minHeight: 0,
+      overflowX: "hidden",
+      overflowY: "auto",
+    };
+    if ("bottom" in a) return { ...base, bottom: a.bottom, top: "auto" };
+    return { ...base, top: a.top, bottom: "auto" };
+  };
 
   const popover = typeof document !== "undefined"
     ? createPortal(
@@ -157,15 +187,11 @@ export function ShareMenu({
           {open && anchor && !contactsOpen && (
             <motion.div
               data-share-popover
-              initial={{ opacity: 0, y: 4 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: 4 }}
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
               className={popoverClass}
-              style={{
-                top: anchor.top,
-                left: anchor.left,
-                transform: anchor.transform,
-              }}
+              style={anchorStyle(anchor)}
               onClick={(e) => e.stopPropagation()}
             >
               {showContactsRecommendation && (
@@ -220,15 +246,11 @@ export function ShareMenu({
           {open && anchor && contactsOpen && (
             <motion.div
               data-share-popover
-              initial={{ opacity: 0, y: 4 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: 4 }}
-              className={`${popoverClass} w-[min(20rem,calc(100vw-1.5rem))] max-h-[min(24rem,58vh)] flex-col overflow-y-auto`}
-              style={{
-                top: anchor.top,
-                left: anchor.left,
-                transform: anchor.transform,
-              }}
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className={`${popoverClass} flex-col flex-nowrap`}
+              style={anchorStyle(anchor)}
               onClick={(e) => e.stopPropagation()}
             >
               <div className="mb-2 flex w-full shrink-0 items-center justify-between">

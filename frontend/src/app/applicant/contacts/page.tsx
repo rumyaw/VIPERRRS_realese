@@ -3,7 +3,7 @@
 import { motion } from "framer-motion";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
-import { useEffect, useState, useCallback, Suspense } from "react";
+import { useEffect, useState, useCallback, useRef, Suspense } from "react";
 import { useAuth } from "@/contexts/auth-context";
 import { GlassPanel } from "@/components/ui/GlassPanel";
 import { JOB_SEARCH_LABELS } from "@/lib/profile-defaults";
@@ -62,6 +62,7 @@ function ContactsPageInner() {
   const [searchQuery, setSearchQuery] = useState("");
   const [searchResults, setSearchResults] = useState<SearchApplicantApi[]>([]);
   const [searching, setSearching] = useState(false);
+  const searchReqId = useRef(0);
 
   useEffect(() => {
     const t = searchParams.get("tab");
@@ -94,17 +95,45 @@ function ContactsPageInner() {
     }
   }, [showToast]);
 
-  const handleSearch = async () => {
-    if (!searchQuery.trim()) return;
-    setSearching(true);
-    try {
-      const results = await searchApplicants(searchQuery.trim());
-      setSearchResults(results);
-    } catch {
-      showToast("Ошибка поиска", "error");
-    } finally {
+  const runApplicantSearch = useCallback(
+    async (raw: string) => {
+      const q = raw.trim();
+      if (!q) {
+        searchReqId.current += 1;
+        setSearchResults([]);
+        setSearching(false);
+        return;
+      }
+      const id = ++searchReqId.current;
+      setSearching(true);
+      try {
+        const results = await searchApplicants(q);
+        if (searchReqId.current === id) setSearchResults(results);
+      } catch {
+        if (searchReqId.current === id) showToast("Ошибка поиска", "error");
+      } finally {
+        if (searchReqId.current === id) setSearching(false);
+      }
+    },
+    [showToast],
+  );
+
+  useEffect(() => {
+    const q = searchQuery.trim();
+    if (!q) {
+      searchReqId.current += 1;
+      setSearchResults([]);
       setSearching(false);
+      return;
     }
+    const t = window.setTimeout(() => {
+      void runApplicantSearch(searchQuery);
+    }, 280);
+    return () => clearTimeout(t);
+  }, [searchQuery, runApplicantSearch]);
+
+  const handleSearch = () => {
+    void runApplicantSearch(searchQuery);
   };
 
   const handleSendRequest = async (toUserId: string) => {
@@ -220,6 +249,9 @@ function ContactsPageInner() {
               {/* Поиск соискателей */}
               <GlassPanel className="p-5">
                 <h2 className="text-lg font-semibold text-[var(--text-primary)]">Найти соискателя</h2>
+                <p className="mt-1 text-xs text-[var(--text-secondary)]">
+                  Вводите имя или email — список обновляется по мере набора
+                </p>
                 <div className="mt-3 flex flex-col gap-2 min-[420px]:flex-row min-[420px]:items-stretch">
                   <div className="relative min-w-0 flex-1">
                     <HugeiconsIcon

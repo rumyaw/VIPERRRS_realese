@@ -3,6 +3,11 @@
 import { useEffect, useRef, useState } from "react";
 import type { Opportunity } from "@/lib/types";
 
+/** Стабильная подпись маркеров: без неё каждый рендер с `favoriteIds={[]}` и новым onMapClick пересоздаёт карту */
+function opportunitiesLayoutKey(opportunities: Opportunity[]): string {
+  return opportunities.map((o) => `${o.id}:${o.coords[0]},${o.coords[1]}`).join("|");
+}
+
 const SCRIPT_ID = "yandex-maps-2-1-script";
 let ymapsLoadPromise: Promise<void> | null = null;
 
@@ -86,6 +91,13 @@ export function YandexMap({
 }: YandexMapProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<{ destroy: () => void } | null>(null);
+  const onMapClickRef = useRef(onMapClick);
+  const onMarkerClickRef = useRef(onMarkerClick);
+  onMapClickRef.current = onMapClick;
+  onMarkerClickRef.current = onMarkerClick;
+
+  const opportunitiesKey = opportunitiesLayoutKey(opportunities);
+  const favoritesKey = [...favoriteIds].sort().join("\0");
 
   const [isDark, setIsDark] = useState(true);
 
@@ -194,15 +206,15 @@ export function YandexMap({
           );
 
           // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          (placemark as any).events.add("click", () => onMarkerClick?.(opp.id));
+          (placemark as any).events.add("click", () => onMarkerClickRef.current?.(opp.id));
           map.geoObjects.add(placemark);
         });
-        if (selectable && onMapClick) {
+        if (selectable) {
           let selectionMark: unknown = null;
           // eslint-disable-next-line @typescript-eslint/no-explicit-any
           (map as any).events.add("click", (e: any) => {
             const coords = e.get("coords") as [number, number];
-            onMapClick(coords);
+            onMapClickRef.current?.(coords);
 
             if (selectionMark) map.geoObjects.remove(selectionMark);
             selectionMark = new ymaps.Placemark(coords, {}, {
@@ -231,7 +243,11 @@ export function YandexMap({
       }
       if (el) el.innerHTML = "";
     };
-  }, [opportunities, favoriteIds, onMarkerClick, onMapClick, selectable, isDark]);
+    // Колбэки через ref — иначе inline-функции с родителя пересоздают карту на каждый ввод в форме.
+    // Ключи вместо []/opportunities по ссылке (каждый рендер — новый объект).
+    // opportunities / favoriteIds берём из замыкания той же отрисовки, что и key.
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- намеренно только layout-ключи
+  }, [opportunitiesKey, favoritesKey, selectable, isDark]);
 
   const apiKey = process.env.NEXT_PUBLIC_YANDEX_MAPS_API_KEY;
 

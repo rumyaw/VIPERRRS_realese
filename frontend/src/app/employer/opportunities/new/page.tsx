@@ -3,7 +3,7 @@
 import { motion } from "framer-motion";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useAuth } from "@/contexts/auth-context";
 import { GlassPanel } from "@/components/ui/GlassPanel";
 import { YandexMap } from "@/components/map/YandexMap";
@@ -44,6 +44,36 @@ export default function CreateOpportunityPage() {
     eventStart: "",
     eventEnd: "",
   });
+
+  const companyNameForMap = user?.employer?.companyName ?? "";
+
+  const mapPreviewOpps = useMemo((): Opportunity[] => {
+    if (!selectedCoords) return [];
+    return [
+      {
+        id: "preview",
+        title: "Точка на карте",
+        shortDescription: "Название и описание заполняются в форме слева — ввод там не перезагружает карту.",
+        fullDescription: "",
+        companyName: companyNameForMap || "Компания",
+        companyId: "preview",
+        type: "vacancy_junior",
+        workFormat: "hybrid",
+        locationLabel: "",
+        coords: selectedCoords,
+        publishedAt: new Date().toISOString(),
+        validUntil: null,
+        eventDate: null,
+        salaryMin: null,
+        salaryMax: null,
+        currency: "RUB",
+        contacts: {},
+        tags: [],
+        level: "junior",
+        employment: "full",
+      } as Opportunity,
+    ];
+  }, [selectedCoords, companyNameForMap]);
 
   const emp = user?.employer;
   if (!emp) return null;
@@ -150,29 +180,6 @@ export default function CreateOpportunityPage() {
       setSaving(false);
     }
   };
-
-  const previewOpps: Opportunity[] = selectedCoords ? [{
-    id: "preview",
-    title: form.title || "Новая возможность",
-    shortDescription: form.shortDescription || "Описание...",
-    fullDescription: "",
-    companyName: emp.companyName,
-    companyId: "preview",
-    type: form.type,
-    workFormat: form.workFormat,
-    locationLabel: form.locationLabel || "Москва",
-    coords: selectedCoords,
-    publishedAt: new Date().toISOString(),
-    validUntil: null,
-    eventDate: null,
-    salaryMin: form.salaryMin ? parseInt(form.salaryMin) : null,
-    salaryMax: form.salaryMax ? parseInt(form.salaryMax) : null,
-    currency: "RUB",
-    contacts: {},
-    tags: tagList,
-    level: "junior",
-    employment: "full",
-  } as Opportunity] : [];
 
   return (
     <div className="mx-auto max-w-6xl space-y-6 px-1 sm:px-0">
@@ -390,7 +397,7 @@ export default function CreateOpportunityPage() {
           <GlassPanel className="p-4">
             <h3 className="mb-3 text-sm font-medium text-[var(--text-secondary)]">Укажите место на карте</h3>
             <YandexMap
-              opportunities={previewOpps}
+              opportunities={mapPreviewOpps}
               favoriteIds={[]}
               selectable
               onMapClick={(coords) => {
