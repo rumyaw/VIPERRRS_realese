@@ -1,6 +1,6 @@
 services:
   postgres:
-    image: postgres:16-alpine
+    image: postgres:18-alpine
     container_name: tramplin-postgres
     environment:
       POSTGRES_USER: tramplin
@@ -9,7 +9,7 @@ services:
     ports:
       - "5432:5432"
     volumes:
-      - tramplin_pg_data:/var/lib/postgresql/data
+      - tramplin_pg18_data:/var/lib/postgresql
       - ./backend/internal/db/init-scripts:/docker-entrypoint-initdb.d:ro
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U tramplin -d tramplin"]
@@ -138,5 +138,5 @@ services:
     restart: unless-stopped
 
 volumes:
-  tramplin_pg_data:
+  tramplin_pg18_data:
   tramplin_grafana_data:

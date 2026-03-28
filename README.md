@@ -10,7 +10,7 @@
 
 [![Next.js](https://img.shields.io/badge/Next.js-15-000000?style=flat-square&logo=next.js&logoColor=white)](https://nextjs.org/)
 [![Go](https://img.shields.io/badge/Go-1.23-00ADD8?style=flat-square&logo=go)](https://go.dev/)
-[![PostgreSQL](https://img.shields.io/badge/PostgreSQL-16-4169E1?style=flat-square&logo=postgresql)](https://www.postgresql.org/)
+[![PostgreSQL](https://img.shields.io/badge/PostgreSQL-18-4169E1?style=flat-square&logo=postgresql)](https://www.postgresql.org/)
 [![Docker](https://img.shields.io/badge/Docker_Compose-2496ED?style=flat-square&logo=docker&logoColor=white)](https://docs.docker.com/compose/)
 [![Nginx](https://img.shields.io/badge/Nginx-reverse_proxy-009639?style=flat-square&logo=nginx&logoColor=white)](https://nginx.org/)
 
@@ -120,6 +120,18 @@ docker compose up --build
 
 Удаляются именованные volume (в т.ч. данные PostgreSQL и Grafana).
 
+### Переход с PostgreSQL 16 (обновление репозитория)
+
+Образ **18** несовместим со старым томом `tramplin_pg_data` (другой путь данных и мажорная версия). После `git pull` остановите стек и удалите старый том, затем поднимите заново — БД инициализируется скриптами из `init-scripts/`:
+
+```bash
+docker compose down
+docker volume rm viperrrs_delaem_tramplin_pg_data   # префикс совпадает с именем каталога проекта; см. docker volume ls
+docker compose up --build
+```
+
+Если префикс другой — подставьте имя из `docker volume ls | grep tramplin_pg_data`.
+
 ---
 
 ## Точки входа и порты
@@ -212,7 +224,7 @@ flowchart TB
 
 ## Локальная разработка без Docker
 
-### 1. PostgreSQL 16
+### 1. PostgreSQL 18
 
 ```sql
 CREATE USER tramplin WITH PASSWORD 'tramplin';
@@ -397,7 +409,7 @@ cd backend && go build -o bin/api ./cmd/api
 |------|------------|
 | Frontend | Next.js 15, React 19, TypeScript, Tailwind CSS 4, Framer Motion |
 | Backend | Go 1.23, chi, pgx, golang-jwt, bcrypt |
-| База данных | PostgreSQL 16 |
+| База данных | PostgreSQL 18 |
 | Карты | Яндекс Карты API 2.1 |
 | Контейнеризация | Docker, Docker Compose |
 | Reverse proxy | Nginx (auth_request, WebSocket для Grafana) |
